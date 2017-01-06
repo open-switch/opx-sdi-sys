@@ -291,7 +291,7 @@ sdi_entity_hdl_t sdi_entity_create(sdi_entity_type_t type, uint_t instance, cons
 
     STD_ASSERT(name != NULL);
 
-    strncpy(entity_hdl->name, name, SDI_MAX_NAME_LEN);
+    safestrncpy(entity_hdl->name, name, sizeof(entity_hdl->name));
     entity_hdl->type=type;
     entity_hdl->instance=instance;
     entity_hdl->oper_support_flag = 0;
@@ -343,7 +343,8 @@ void sdi_entity_add_resource(sdi_entity_hdl_t ehdl, sdi_resource_hdl_t resource,
     newnode = (sdi_entity_resource_node_t *)calloc(1, sizeof(sdi_entity_resource_node_t));
     STD_ASSERT(newnode != NULL);
 
-    strncpy(((sdi_resource_priv_hdl_t)resource)->alias, name, SDI_MAX_NAME_LEN);
+    safestrncpy(((sdi_resource_priv_hdl_t)resource)->alias, name,
+            sizeof(((sdi_resource_priv_hdl_t)resource)->alias));
     newnode->hdl = resource;
     std_dll_insertatback(((sdi_entity_priv_hdl_t)ehdl)->resource_list, (std_dll *)newnode);
 }
@@ -414,8 +415,11 @@ static void sdi_entity_register_resources(std_config_node_t node, sdi_entity_hdl
         char *resource_name = NULL;
         char *resource_reference = NULL;
 
-        STD_ASSERT((resource_reference = std_config_attr_get(resource, "reference")) != NULL);
-        STD_ASSERT((resource_name = std_config_attr_get(resource, "name")) != NULL);
+        resource_reference = std_config_attr_get(resource, "reference");
+        STD_ASSERT(resource_reference != NULL);
+
+        resource_name = std_config_attr_get(resource, "name");
+        STD_ASSERT(resource_name != NULL);
 
         res_hdl = sdi_find_resource_by_name(resource_reference);
         STD_ASSERT(res_hdl != NULL);
@@ -528,7 +532,8 @@ void sdi_register_entity(std_config_node_t node)
      * However, such errors can be caught with offline xml validation.
      * Check feasibility
      */
-    STD_ASSERT((config_attr = std_config_attr_get(node, "instance")) != NULL);
+    config_attr = std_config_attr_get(node, "instance");
+    STD_ASSERT(config_attr != NULL);
     instance = atoi(config_attr);
     alias_name = std_config_attr_get(node,"alias");
 
@@ -538,7 +543,8 @@ void sdi_register_entity(std_config_node_t node)
         strncpy(alias, alias_name, SDI_MAX_NAME_LEN);
     }
 
-    STD_ASSERT((config_attr = std_config_attr_get(node, "type")) != NULL);
+    config_attr = std_config_attr_get(node, "type");
+    STD_ASSERT(config_attr != NULL);
     entity_type = sdi_entity_string_to_type(config_attr);
 
     SDI_TRACEMSG_LOG("\nregistering entity: %s@%d\n", config_attr, instance);
@@ -546,7 +552,9 @@ void sdi_register_entity(std_config_node_t node)
     STD_ASSERT(entity_hdl);
 
     entity_priv_hdl = (sdi_entity_priv_hdl_t) entity_hdl;
-    STD_ASSERT((presence_name = std_config_attr_get(node, "presence")) != NULL);
+
+    presence_name = std_config_attr_get(node, "presence");
+    STD_ASSERT(presence_name != NULL);
     if (strncmp(presence_name, SDI_STR_FIXED_SLOT, SDI_FIXED_SLOT_SIZE) != 0) {
            STD_BIT_SET(entity_priv_hdl->oper_support_flag, SDI_HOTSWAPPABLE);
            entity_priv_hdl->pres_pin_hdl = sdi_get_pin_bus_handle_by_name(presence_name);

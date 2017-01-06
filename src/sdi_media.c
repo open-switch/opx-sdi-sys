@@ -229,6 +229,82 @@ t_std_error sdi_media_tx_control_status_get (sdi_resource_hdl_t resource_hdl,
 }
 
 /**
+ * Disable/Enable the cdr of the specific media.
+ * resource_hdl[in] - handle of the media resource
+ * channel[in]      - channel number that is of interest and should be 0 only
+ *                    one channel is present
+ * enable[in]       - "false" to disable and "true" to enable
+ * @return          - standard t_std_error
+ */
+t_std_error sdi_media_cdr_status_set (sdi_resource_hdl_t resource_hdl, uint_t channel,
+                                  bool enable)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t media_hdl = NULL;
+
+    STD_ASSERT(resource_hdl != NULL);
+
+    media_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+
+    if (media_hdl->type != SDI_RESOURCE_MEDIA){
+        return(SDI_ERRCODE(EPERM));
+    }
+
+    if(((media_ctrl_t *)media_hdl->callback_fns)->cdr_status_set == NULL) {
+        return  SDI_ERRCODE(EOPNOTSUPP);
+    }
+
+    rc = ((media_ctrl_t *)media_hdl->callback_fns)->cdr_status_set (media_hdl->callback_hdl,
+                                                                channel, enable);
+    if (rc != STD_ERR_OK){
+        if( STD_ERR_EXT_PRIV(rc) != EOPNOTSUPP ) {
+            SDI_ERRMSG_LOG("Failed to set the cdr status for %s, error code : %d(0x%x)",
+                    media_hdl->name, rc, rc);
+        }
+    }
+
+    return rc;
+}
+
+/**
+ * For getting transmitter status(enabled/disabled) on the specified channel
+ * resource_hdl[in] - handle of the media resource
+ * channel[in]      - channel number
+ * status[out]      -  transmitter status-> "true" if enabled, else "false"
+ * return           - standard t_std_error
+ */
+t_std_error sdi_media_cdr_status_get (sdi_resource_hdl_t resource_hdl,
+                                             uint_t channel, bool *status)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t media_hdl = NULL;
+
+    STD_ASSERT(resource_hdl != NULL);
+    STD_ASSERT(status != NULL);
+
+    media_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+
+    if (media_hdl->type != SDI_RESOURCE_MEDIA){
+        return(SDI_ERRCODE(EPERM));
+    }
+
+    if(((media_ctrl_t *)media_hdl->callback_fns)->cdr_status_get == NULL) {
+        return  SDI_ERRCODE(EOPNOTSUPP);
+    }
+
+    rc = ((media_ctrl_t *)media_hdl->callback_fns)->cdr_status_get (media_hdl->callback_hdl,
+                                                                          channel, status);
+    if (rc != STD_ERR_OK){
+        if( STD_ERR_EXT_PRIV(rc) != EOPNOTSUPP ) {
+            SDI_ERRMSG_LOG("Failed to get the cdr status for %s, error code : %d(0x%x)",
+                    media_hdl->name, rc, rc);
+        }
+    }
+
+    return rc;
+}
+
+/**
  * Get the maximum speed that can be supported by a specific media resource
  * resource_hdl[in] - handle of the media resource
  * speed[out]       - maximum speed that can be supported by media device
@@ -511,8 +587,10 @@ t_std_error sdi_media_module_control (sdi_resource_hdl_t resource_hdl,
     rc = ((media_ctrl_t *)media_hdl->callback_fns)->module_control(media_hdl->callback_hdl,
                                                                    ctrl_type, enable);
     if (rc != STD_ERR_OK){
-        SDI_ERRMSG_LOG("Failed to set module control parameters for %s, error code : %d(0x%x)",
-                        media_hdl->name, rc, rc);
+        if (STD_ERR_EXT_PRIV(rc) != EOPNOTSUPP ) {
+            SDI_ERRMSG_LOG("Failed to set module control parameters for %s, error code : %d(0x%x)",
+                    media_hdl->name, rc, rc);
+        }
     }
     return rc;
 }
@@ -657,8 +735,10 @@ t_std_error sdi_media_module_control_status_get (sdi_resource_hdl_t resource_hdl
     rc = ((media_ctrl_t *)media_hdl->callback_fns)->module_control_status_get(media_hdl->callback_hdl,
                                                                               ctrl_type, status);
     if (rc != STD_ERR_OK){
-        SDI_ERRMSG_LOG("Failed to set module control parameters for %s, error code : %d(0x%x)",
-                        media_hdl->name, rc, rc);
+        if (STD_ERR_EXT_PRIV(rc) != EOPNOTSUPP ) {
+            SDI_ERRMSG_LOG("Failed to set module control parameters for %s, error code : %d(0x%x)",
+                    media_hdl->name, rc, rc);
+        }
     }
     return rc;
 }
@@ -862,6 +942,67 @@ t_std_error sdi_media_led_set (sdi_resource_hdl_t resource_hdl, uint_t channel,
     if (rc != STD_ERR_OK){
         SDI_ERRMSG_LOG("Failed to set the led for %s, error code : %d(0x%x)",
                         media_hdl->name, rc, rc);
+    }
+
+    return rc;
+}
+
+/*
+ * @brief initialize plugedin  module
+ * @param[in] resource_hdl - handle to the qsfp
+ * @pres[in]      - presence status
+ * @return - standard @ref t_std_error
+ */
+
+t_std_error sdi_media_module_init (sdi_resource_hdl_t resource_hdl, bool pres)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t media_hdl = NULL;
+
+    STD_ASSERT(resource_hdl != NULL);
+
+    media_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+
+    if (media_hdl->type != SDI_RESOURCE_MEDIA){
+        return(SDI_ERRCODE(EPERM));
+    }
+
+    rc = ((media_ctrl_t *)media_hdl->callback_fns)->module_init(media_hdl->callback_hdl,
+                                                                pres);
+
+    if (rc != STD_ERR_OK){
+        SDI_ERRMSG_LOG("Failed to initialize the module for %s, error code : %d(0x%x)",
+                        media_hdl->name, rc, rc);
+    }
+
+    return rc;
+}
+
+/*
+ * @brief Set wavelength for tunable media
+ * @param[in]  - resource_hdl - handle to the front panel port
+ * @param[in]  - wavelength value
+ */
+
+t_std_error sdi_media_wavelength_set (sdi_resource_hdl_t resource_hdl, float value)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t media_hdl = NULL;
+
+    STD_ASSERT(resource_hdl != NULL);
+
+    media_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+
+    if (media_hdl->type != SDI_RESOURCE_MEDIA){
+        return(SDI_ERRCODE(EPERM));
+    }
+
+    rc = ((media_ctrl_t *)media_hdl->callback_fns)->wavelength_set(media_hdl->callback_hdl,
+                                                                   value);
+
+    if (rc != STD_ERR_OK){
+        SDI_ERRMSG_LOG("Failed to set wavelength for %s, error code : %d (0x%x)",
+                media_hdl->name, rc, rc);
     }
 
     return rc;
