@@ -1,4 +1,4 @@
-nobase_include_HEADERS = \
+noinst_HEADERS = \
 	opx/private/sdi_entity_internal.h \
 	opx/sdi_register_common_api.h \
 	opx/sdi_register_eeprom_api.h \
