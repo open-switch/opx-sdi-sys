@@ -51,7 +51,7 @@ t_std_error sdi_led_on (sdi_resource_hdl_t resource_hdl)
 
     rc = ((sdi_led_sensor_t *)led_hdl->callback_fns)->led_on(led_hdl->callback_hdl);
     if (rc != STD_ERR_OK){
-        SDI_ERRMSG_LOG("Failed to turn on the LED sensor device %s\n", led_hdl->name);
+        SDI_ERRMSG_LOG("Failed to turn on the LED device %s", led_hdl->name);
     }
 
     return rc;
@@ -79,7 +79,7 @@ t_std_error sdi_led_off (sdi_resource_hdl_t resource_hdl)
 
     rc = ((sdi_led_sensor_t *)led_hdl->callback_fns)->led_off(led_hdl->callback_hdl);
     if (rc != STD_ERR_OK){
-        SDI_ERRMSG_LOG("Failed to turn off the LED sensor device %s\n", led_hdl->name);
+        SDI_ERRMSG_LOG("Failed to turn off the LED device %s", led_hdl->name);
     }
 
     return rc;
@@ -105,7 +105,7 @@ t_std_error sdi_digital_display_led_on (sdi_resource_hdl_t resource_hdl)
 
     rc = ((sdi_digital_display_led_t *)led_hdl->callback_fns)->digital_display_led_on((led_hdl->callback_hdl));
     if (rc != STD_ERR_OK){
-        SDI_ERRMSG_LOG("Failed to trun of %s", led_hdl->name);
+        SDI_ERRMSG_LOG("Failed to turn on digital display LED device %s", led_hdl->name);
     }
     return rc;
 }
@@ -130,7 +130,60 @@ t_std_error sdi_digital_display_led_off (sdi_resource_hdl_t resource_hdl)
 
     rc = ((sdi_digital_display_led_t *)led_hdl->callback_fns)->digital_display_led_off((led_hdl->callback_hdl));
     if (rc != STD_ERR_OK){
-        SDI_ERRMSG_LOG("Failed to trun of %s", led_hdl->name);
+        SDI_ERRMSG_LOG("Failed to turn off digital display LED device %s", led_hdl->name);
+    }
+    return rc;
+}
+
+/**
+ * Get the digital display LED power state
+ *
+ * resource_hdl[in] - Handle of the resource
+ * state[out] - bool pointer to state value
+ *
+ * return t_std_error
+ */
+t_std_error sdi_digital_display_led_get_state (sdi_resource_hdl_t resource_hdl, bool *state)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t led_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+
+    STD_ASSERT(led_hdl != NULL);
+
+    if (led_hdl->type != SDI_RESOURCE_DIGIT_DISPLAY_LED){
+        return(SDI_ERRCODE(EPERM));
+    }
+
+    rc = ((sdi_digital_display_led_t *)led_hdl->callback_fns)->digital_display_led_get_state(led_hdl->callback_hdl, state);
+    if (rc != STD_ERR_OK){
+        SDI_ERRMSG_LOG("Failed to get state of digital display LED device %s", led_hdl->name);
+    }
+    return rc;
+}
+
+/**
+ * Gets the value in the digital_display_led.
+ *
+ * hdl[in]            : Handle of the resource
+ * display_string[out]: Value currently displayed
+ * buf_size[in] - size of allocated buffer. To ensure no overflow.
+ * return t_std_error
+ */
+t_std_error sdi_digital_display_led_get (sdi_resource_hdl_t hdl, char *display_string, size_t buf_size)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t led_hdl = (sdi_resource_priv_hdl_t)hdl;
+
+    STD_ASSERT(led_hdl != NULL);
+
+    if (led_hdl->type != SDI_RESOURCE_DIGIT_DISPLAY_LED){
+        return(SDI_ERRCODE(EPERM));
+    }
+
+    rc = ((sdi_digital_display_led_t *)led_hdl->callback_fns)->digital_display_led_get(led_hdl->callback_hdl,
+                                                                                       display_string, buf_size);
+    if (rc != STD_ERR_OK){
+        SDI_ERRMSG_LOG("Failed to get value on digital display LED device %s", led_hdl->name);
     }
     return rc;
 }
@@ -158,7 +211,7 @@ t_std_error sdi_digital_display_led_set (sdi_resource_hdl_t hdl, const char *dis
     rc = ((sdi_digital_display_led_t *)led_hdl->callback_fns)->digital_display_led_set(led_hdl->callback_hdl,
                                                                                        display_string);
     if (rc != STD_ERR_OK){
-        SDI_ERRMSG_LOG("Failed to dispaly %s on LED sensor device %s", display_string, led_hdl->name);
+        SDI_ERRMSG_LOG("Failed to display %s on digital display LED device %s", display_string, led_hdl->name);
     }
     return rc;
 }

@@ -123,6 +123,7 @@ SdiReferenceEntity::SdiReferenceEntity(std_config_node_t entity_node)
     /* Instance of an Entity. */
     int instance=0;
     std_config_node_t resource;
+    res_type = SDI_RESOURCE_MAX;
     cfg_attr=std_config_attr_get(entity_node,"instance");
     if(cfg_attr.size()!=0)
     {

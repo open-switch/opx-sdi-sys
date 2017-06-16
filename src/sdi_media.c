@@ -336,36 +336,6 @@ t_std_error sdi_media_speed_get (sdi_resource_hdl_t resource_hdl,
 }
 
 /**
- * Checks whether the specified media is qualified by DELL or not
- * resource_hdl[in] - handle of the media resource
- * status[out]      - "true" if media is qualified by DELL else "false"
- * return           - standard t_std_error
- */
-t_std_error sdi_media_is_dell_qualified (sdi_resource_hdl_t resource_hdl,
-                                         bool *status)
-{
-    t_std_error rc = STD_ERR_OK;
-    sdi_resource_priv_hdl_t media_hdl = NULL;
-
-    STD_ASSERT(resource_hdl != NULL);
-    STD_ASSERT(status != NULL);
-
-    media_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
-
-    if (media_hdl->type != SDI_RESOURCE_MEDIA){
-        return(SDI_ERRCODE(EPERM));
-    }
-
-    rc = ((media_ctrl_t *)media_hdl->callback_fns)->is_dell_qualified(media_hdl->callback_hdl,
-                                                                      status);
-    if (rc != STD_ERR_OK){
-        SDI_ERRMSG_LOG("Failed to get the dell qualified status for %s, error code : %d(0x%x)",
-                        media_hdl->name, rc, rc);
-    }
-    return rc;
-}
-
-/**
  * Reads the requested parameter value from eeprom
  * resource_hdl[in] - handle of the media resource
  * param[in]        - parametr type that is of interest(e.g wavelength, maximum
@@ -462,35 +432,6 @@ t_std_error sdi_media_transceiver_code_get (sdi_resource_hdl_t resource_hdl,
                        "error code : %d(0x%x)", media_hdl->name, rc, rc);
     }
 
-    return rc;
-}
-
-/**
- * Read the dell product information
- * resource_hdl[in] - Handle of the resource
- * info[out] - dell product information
- * return - standard t_std_error
- */
-t_std_error sdi_media_dell_product_info_get (sdi_resource_hdl_t resource_hdl,
-                                             sdi_media_dell_product_info_t *info)
-{
-    t_std_error rc = STD_ERR_OK;
-    sdi_resource_priv_hdl_t media_hdl = NULL;
-
-    STD_ASSERT(resource_hdl != NULL);
-    STD_ASSERT(info != NULL);
-
-    media_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
-
-    if (media_hdl->type != SDI_RESOURCE_MEDIA){
-        return(SDI_ERRCODE(EPERM));
-    }
-
-    rc = ((media_ctrl_t*) media_hdl->callback_fns)->dell_product_info_get(media_hdl->callback_hdl, info);
-    if (rc != STD_ERR_OK){
-        SDI_ERRMSG_LOG("Failed to get product information for %s error code : %d(0x%x)",
-                        media_hdl->name, rc, rc);
-    }
     return rc;
 }
 
@@ -699,6 +640,111 @@ t_std_error sdi_media_phy_speed_set(sdi_resource_hdl_t resource_hdl,
         }
         speed++;
         count--;
+    }
+
+    return rc;
+}
+
+/**
+ * get media phy link status 
+ * resource_hdl[in] - handle of the resource
+ * channel [in]     - channel number
+ * type[in]         - Media type
+ * status[out]       - link status
+ * return           - standard t_std_error
+ */
+
+t_std_error sdi_media_phy_link_status_get (sdi_resource_hdl_t resource_hdl, uint_t channel, 
+                                           sdi_media_type_t type, bool *status)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t media_hdl = NULL;
+
+    STD_ASSERT(resource_hdl != NULL);
+
+    media_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+
+    if (media_hdl->type != SDI_RESOURCE_MEDIA){
+        return(SDI_ERRCODE(EPERM));
+    }
+
+    rc = ((media_ctrl_t *)media_hdl->callback_fns)->media_phy_link_status_get(media_hdl->callback_hdl,
+            channel, type, status);
+    if (rc != STD_ERR_OK){
+        if( STD_ERR_EXT_PRIV(rc) != EOPNOTSUPP ) {
+            SDI_ERRMSG_LOG("Failed to Set mode for media phy details for %s error code : %d(0x%x)",
+                    media_hdl->name, rc, rc);
+        }
+    }
+
+    return rc;
+}
+
+/**
+ * Power down enable / disable 
+ * resource_hdl[in] - handle of the resource
+ * channel [in]     - channel number
+ * type[in]         - Media type
+ * enable[in]       - True - Power down, False - Power up
+ * return           - standard t_std_error
+ */
+
+t_std_error sdi_media_phy_power_down_enable (sdi_resource_hdl_t resource_hdl, uint_t channel,
+                                          sdi_media_type_t type, bool enable)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t media_hdl = NULL;
+
+    STD_ASSERT(resource_hdl != NULL);
+
+    media_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+
+    if (media_hdl->type != SDI_RESOURCE_MEDIA){
+        return(SDI_ERRCODE(EPERM));
+    }
+
+    rc = ((media_ctrl_t *)media_hdl->callback_fns)->media_phy_power_down_enable(media_hdl->callback_hdl,
+            channel, type, enable);
+    if (rc != STD_ERR_OK){
+        if( STD_ERR_EXT_PRIV(rc) != EOPNOTSUPP ) {
+            SDI_ERRMSG_LOG("Failed to Set mode for media phy details for %s error code : %d(0x%x)",
+                    media_hdl->name, rc, rc);
+        }
+    }
+
+    return rc;
+}
+
+/**
+ * Fiber/Serdes TX and RX  enable / disable 
+ * resource_hdl[in] - handle of the resource
+ * channel [in]     - channel number
+ * type[in]         - Media type
+ * enable[in]       - True - enable, False - disable
+ * return           - standard t_std_error
+ */
+
+t_std_error sdi_media_phy_serdes_control(sdi_resource_hdl_t resource_hdl, uint_t channel,
+                                          sdi_media_type_t type, bool enable)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t media_hdl = NULL;
+
+    STD_ASSERT(resource_hdl != NULL);
+
+    media_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+
+    if (media_hdl->type != SDI_RESOURCE_MEDIA){
+        return(SDI_ERRCODE(EPERM));
+    }
+
+    rc = ((media_ctrl_t *)media_hdl->callback_fns)->media_phy_serdes_control(media_hdl->callback_hdl,
+            channel, type, enable);
+    if (rc != STD_ERR_OK){
+        if( STD_ERR_EXT_PRIV(rc) != EOPNOTSUPP ) {
+            SDI_ERRMSG_LOG("Failed to Set mode for media phy details for %s error code : %d(0x%x)",
+                    media_hdl->name, rc, rc);
+        }
     }
 
     return rc;
