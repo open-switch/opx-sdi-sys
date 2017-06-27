@@ -8,4 +8,4 @@ This repository contains the implementation of SDI entity abstraction layer for 
   
 See [System device interface](https://github.com/open-switch/opx-docs/wiki/System-device-interface) for more information on the SDI module.  
   
-(c) 2017 Dell
+(c) 2017 Dell EMC
