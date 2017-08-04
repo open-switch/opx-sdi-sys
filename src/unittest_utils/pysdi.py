@@ -35,7 +35,7 @@ class SdiError(Exception):
 '''
 @todo location of libsdi_sys_v2 must not be hardcoded.
 '''
-sdi_sys=CDLL("/opt/dell/os10/lib/libsdi_sys_v2.so")
+sdi_sys=CDLL("/usr/lib/x86_64-linux-gnu/libopx_sdi_sys.so")
 
 def sdi_sys_init():
     return sdi_sys.sdi_sys_init()
