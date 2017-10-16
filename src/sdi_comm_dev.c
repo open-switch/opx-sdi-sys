@@ -170,6 +170,46 @@ t_std_error sdi_comm_dev_host_temperature_set(sdi_resource_hdl_t resource_hdl, i
 }
 
 /*
+ * Flush message buffer
+ */
+t_std_error sdi_comm_dev_flush_msg_buffer(sdi_resource_hdl_t resource_hdl)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t comm_dev_hdl = NULL;
+
+    STD_ASSERT(resource_hdl != NULL);
+
+    comm_dev_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+    if (comm_dev_hdl->type != SDI_RESOURCE_COMM_DEV) {
+        return (SDI_ERRCODE(EPERM));
+    }
+
+    rc = ((comm_dev_ctrl_t *)comm_dev_hdl->callback_fns)->flush_msg_buffer(resource_hdl);
+
+    return rc;
+}
+
+/*
+ * Read whether write Message Buffer is ready
+ */
+t_std_error sdi_comm_dev_is_write_buffer_ready(sdi_resource_hdl_t resource_hdl, bool *ready)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t comm_dev_hdl = NULL;
+
+    STD_ASSERT(resource_hdl != NULL);
+
+    comm_dev_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+    if (comm_dev_hdl->type != SDI_RESOURCE_COMM_DEV) {
+        return (SDI_ERRCODE(EPERM));
+    }
+
+    rc = ((comm_dev_ctrl_t *)comm_dev_hdl->callback_fns)->get_buffer_ready(resource_hdl, ready);
+
+    return rc;
+}
+
+/*
  * Read Mailbox Message presence status from host system
  */
 t_std_error sdi_comm_dev_is_msg_present(sdi_resource_hdl_t resource_hdl, bool *presence) {

@@ -1,3 +1,9 @@
+opx-sdi-sys (1.5.1) unstable; urgency=medium
+
+  * Feature: Added buffer operations for comm_dev device
+
+ -- Dell EMC <ops-dev@lists.openswitch.net>  Mon, 16 Oct 2017 11:00:00 -0800
+
 opx-sdi-sys (1.5.0) unstable; urgency=medium
 
   * Feature: Added support for optical media adapter types (QSFP28-DD, depopulated QSFP28-DD, SFP28)
