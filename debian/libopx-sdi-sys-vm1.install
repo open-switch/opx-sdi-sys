@@ -1,0 +1,3 @@
+usr/lib/*/*sdi_sys_vm*.so*
+usr/lib/*/*sdi_db*.so*
+etc/opx/sdi/*.sql

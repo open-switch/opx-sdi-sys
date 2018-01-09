@@ -2,8 +2,7 @@ Source: opx-sdi-sys
 Section: net
 Priority: optional
 Maintainer: Dell EMC <ops-dev@lists.openswitch.net>
-Build-Depends: debhelper (>= 9), dh-autoreconf, libopx-sdi-api-dev (>= 4.12.0),
- libopx-sdi-framework-dev (>= 3.5.0), libopx-common-dev, libopx-logging-dev
+Build-Depends: debhelper (>= 9), dh-autoreconf, libopx-common-dev, libopx-logging-dev, libopx-db-sql-dev, libz-dev
 Standards-Version: 3.9.3
 
 Package: libopx-sdi-sys1
@@ -14,11 +13,26 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: This package contains implementation of System Device Interface(SDI)
 
-Package: libopx-sdi-sys-dev
-Conflicts: libopx-sdi-dev
-Provides: libopx-sdi-dev
-Replaces: libopx-sdi-dev
+Package: libopx-sdi-device-drivers1
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends},libopx-common-dev,libopx-logging-dev,libopx-sdi-api-dev (>= 4.12.0),libopx-sdi-framework-dev (>= 3.5.0),libopx-sdi-sys1 (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: This package contains the device driver plugin to be used with opx-sdi-sys package.
+
+Package: libopx-sdi-framework1
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: This package contains common framework for System Device Interface(SDI)
+
+Package: libopx-sdi-sys-vm1
+Conflicts: libopx-sdi
+Provides: libopx-sdi
+Replaces: libopx-sdi
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: This package contains implementation of System Device Interface(SDI)
+
+Package: libopx-sdi-sys-dev
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends},libopx-common-dev, libopx-logging-dev, libopx-sdi
 Description: This package contains implementation of System Device Interface(SDI)
 

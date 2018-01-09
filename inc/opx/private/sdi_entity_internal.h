@@ -66,6 +66,7 @@ struct sdi_entity {
                                                                * group handlers */
     sdi_pin_group_bus_hdl_t reset_pin_grp_hdl_l1; /* Second level of pin group handle */
     uint_t reset_value_l1; /* Second level of reset value */
+    sdi_pin_group_bus_hdl_t gpr_pin_grp_hdl; /* general purpose register pin group handle */
     sdi_resource_hdl_t entity_info_hdl; /**entity_info handler of an entity */
     sdi_entity_info_t entity_info; /**<entity_info of an entity */
     std_dll_head *resource_list;/**<list of resources that are part of this entity*/
