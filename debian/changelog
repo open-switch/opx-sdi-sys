@@ -1,4 +1,4 @@
-opx-sdi-sys (1.5.0+opx1) unstable; urgency=medium
+opx-sdi-sys (1.5.1+opx1) unstable; urgency=medium
 
   * Update: Consolidated opx-sdi-api into inc of opx-sdi-sys
   * Update: Consolidated opx-sdi-framework into inc/private of opx-sdi-sys
@@ -10,7 +10,7 @@ opx-sdi-sys (1.5.0+opx1) unstable; urgency=medium
 
  -- Dell EMC <ops-dev@lists.openswitch.net>  Wed, 13 Dec 2017 11:00:00 -0800
 
-opx-sdi-sys (1.5.0) unstable; urgency=medium
+opx-sdi-sys (1.5.1) unstable; urgency=medium
 
   * Feature: Added buffer operations for comm_dev device
 
