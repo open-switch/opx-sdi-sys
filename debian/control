@@ -33,6 +33,6 @@ Description: This package contains implementation of System Device Interface(SDI
 
 Package: libopx-sdi-sys-dev
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends},libopx-common-dev, libopx-logging-dev, libopx-sdi
+Depends: ${shlibs:Depends}, ${misc:Depends},libopx-common-dev, libopx-logging-dev, libopx-sdi-sys1
 Description: This package contains implementation of System Device Interface(SDI)
 
