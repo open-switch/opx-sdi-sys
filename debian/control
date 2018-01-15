@@ -2,7 +2,7 @@ Source: opx-sdi-sys
 Section: net
 Priority: optional
 Maintainer: Dell EMC <ops-dev@lists.openswitch.net>
-Build-Depends: debhelper (>= 9), dh-autoreconf, libopx-common-dev, libopx-logging-dev, libopx-db-sql-dev, libz-dev
+Build-Depends: debhelper (>= 9), dh-autoreconf, libopx-common-dev (>= 1.4.0), libopx-logging-dev (>= 2.1.0), libopx-db-sql-dev (>= 1.1.1), libz-dev
 Standards-Version: 3.9.3
 
 Package: libopx-sdi-sys1
@@ -33,6 +33,6 @@ Description: This package contains implementation of System Device Interface(SDI
 
 Package: libopx-sdi-sys-dev
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends},libopx-common-dev, libopx-logging-dev, libopx-sdi-sys1
+Depends: ${shlibs:Depends}, ${misc:Depends},libopx-common-dev (>= 1.4.0), libopx-logging-dev (>= 2.1.0), libopx-sdi-sys1 (=${binary:Version})
 Description: This package contains implementation of System Device Interface(SDI)
 
