@@ -10,7 +10,7 @@ Conflicts: libopx-sdi
 Provides: libopx-sdi
 Replaces: libopx-sdi
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libopx-sdi-device-drivers1, libopx-sdi-framework1
 Description: This package contains implementation of System Device Interface(SDI)
 
 Package: libopx-sdi-device-drivers1
