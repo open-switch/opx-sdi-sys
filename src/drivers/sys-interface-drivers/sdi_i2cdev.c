@@ -867,13 +867,30 @@ static t_std_error sdi_i2cdev_driver_register(std_config_node_t node,
     }
 
     str = std_config_attr_get(node, SDI_DEV_ATTR_SYSFS_NAME);
-    STD_ASSERT(str!=NULL);
-    safestrncpy(sys_i2c_bus->kernel_sysfs_name, str, PATH_MAX);
+    if (str != NULL) {
+        safestrncpy(sys_i2c_bus->kernel_sysfs_name,
+                    str,
+                    sizeof(sys_i2c_bus->kernel_sysfs_name)
+                    );
+    }
 
     str = std_config_attr_get(node, SDI_DEV_ATTR_DEV_NAME);
     if (str != NULL) {
         /*fill the dev name directly if it is passed*/
-        safestrncpy(sys_i2c_bus->kernel_i2cdev_name, str, PATH_MAX);
+        safestrncpy(sys_i2c_bus->kernel_i2cdev_name,
+                    str,
+                    sizeof(sys_i2c_bus->kernel_i2cdev_name)
+                    );
+    }
+
+    if (sys_i2c_bus->kernel_sysfs_name[0] == 0
+        && sys_i2c_bus->kernel_i2cdev_name[0] == 0
+        ) {
+        error = SDI_DEVICE_ERRNO;
+        free(sys_i2c_bus);
+        SDI_DEVICE_ERRMSG_LOG("%s:%d i2c bus %u \n No sysfs or dev name given",
+            __FUNCTION__, __LINE__, i2c_bus->bus.bus_id);
+        return error;
     }
 
     sys_i2c_bus->i2cdev_fd = INVALID_FILE_FD;
