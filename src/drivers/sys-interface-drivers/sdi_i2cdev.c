@@ -227,6 +227,23 @@ static t_std_error sdi_i2cdev_acquire_bus (sdi_i2c_bus_hdl_t i2c_bus)
     return error;
 }
 
+
+/* Run a script to attempt to clear locked-up I2C controller */
+
+static void i2c_reset(const char *func, int fd, sdi_smbus_operation_t operation, sdi_smbus_data_type_t data_type, uint_t commandbuf)
+{
+    static const char script[] = "/usr/bin/opx-i2c-reset";
+
+    /* Check if script exist and is executable, abort if not */
+    if (access(script, X_OK) != 0)  return;
+
+    /* Run script with parameters describing failed I2C/SMBus operation */
+    char cmd_buf[128];
+    snprintf(cmd_buf, sizeof(cmd_buf), "%s %s %d %d %08x", script, func, operation, data_type, commandbuf);
+    system(cmd_buf);
+}
+
+
 /**
  * sdi_sys_smbus_execute
  * Execute the I2C SMBUS transaction by issuing an ioctl to kernel smbus driver
@@ -252,6 +269,7 @@ static t_std_error sdi_sys_smbus_execute(int i2cdev_fd,
     do {
         error = ioctl(i2cdev_fd, I2C_SMBUS, &cmd);
         if (error != STD_ERR_OK) {
+            i2c_reset(__FUNCTION__, i2cdev_fd, operation, data_type, commandbuf);
             retry_count--;
             std_usleep(SDI_IIC_WAIT_TIME);
         }
