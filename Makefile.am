@@ -116,5 +116,4 @@ libopx_sdi_sys_vm_la_SOURCES = \
         
 libopx_sdi_sys_vm_la_CPPFLAGS = -I$(top_srcdir)/inc/opx  -I$(includedir)/opx  -I$(top_srcdir)/inc/opx/private
 libopx_sdi_sys_vm_la_LDFLAGS = -L$(top_srcdir) -version-info 1:1:0 
-#libopx_sdi_sys_vm_la_LIBADD = -lopx_db_sql -lopx_logging -lpthread 
 libopx_sdi_sys_vm_la_LIBADD = libopx_sdi_db.la -lopx_logging -lpthread

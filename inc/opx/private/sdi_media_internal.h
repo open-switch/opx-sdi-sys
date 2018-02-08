@@ -138,6 +138,14 @@ typedef struct {
     t_std_error (*write)(sdi_resource_hdl_t resource_hdl, uint_t offset,
                          uint8_t *data, size_t data_len);
 
+    /* To read from media */
+    t_std_error (*read_generic) (sdi_resource_hdl_t resource_hdl, sdi_media_eeprom_addr_t* addr,
+                     uint8_t *data, size_t data_len);
+
+    /* To write from media */
+    t_std_error (*write_generic) (sdi_resource_hdl_t resource_hdl, sdi_media_eeprom_addr_t* addr,
+                     uint8_t *data, size_t data_len);
+
     /* For enabling/disabling phy media Auto negotiation */
     t_std_error (*media_phy_autoneg_set)(sdi_resource_hdl_t resource_hdl,
                                          uint_t channel, sdi_media_type_t type,

@@ -1,3 +1,11 @@
+opx-sdi-sys (1.5.1+opx5) unstable; urgency=medium
+
+  * Update: Removed redundant header files.
+  * Update: Moved some internal header files into inc/opx/private.
+  * Update: Fixed coding violations due to improper use to macros.
+
+ -- Dell EMC <ops-dev@lists.openswitch.net>  Wed, 31 Jan 2018 11:00:00 -0800
+
 opx-sdi-sys (1.5.1+opx4) unstable; urgency=medium
 
   * Update: Call a script to try to clear locked-up I2C controllers

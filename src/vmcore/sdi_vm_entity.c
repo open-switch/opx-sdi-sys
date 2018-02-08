@@ -376,6 +376,29 @@ void sdi_entity_for_each_resource(sdi_entity_hdl_t hdl,
     }
 }
 
+static t_std_error sdi_entity_info_get(sdi_resource_hdl_t res_hdl, sdi_entity_info_t *info)
+{
+    t_std_error rc;
+    db_sql_handle_t db_hdl = sdi_get_db_handle();
+
+    if (((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_PRODUCT, info->prod_name)) != STD_ERR_OK) ||
+        ((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_PPID, info->ppid)) != STD_ERR_OK) ||
+        ((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_HW_REV, info->hw_revision)) != STD_ERR_OK) ||
+        ((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_PLATFORM, info->platform_name)) != STD_ERR_OK) ||
+        ((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_VENDOR, info->vendor_name)) != STD_ERR_OK) ||
+        ((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_SERVICE_TAG, info->service_tag)) != STD_ERR_OK) ||
+        ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_NUM_MACS, &info->mac_size)) != STD_ERR_OK) ||
+        ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_NUM_FANS, &info->num_fans)) != STD_ERR_OK) ||
+        ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_FAN_MAX_SPEED, &info->max_speed)) != STD_ERR_OK) ||
+        ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_FAN_AIRFLOW, &info->air_flow)) != STD_ERR_OK) ||
+        ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_POWER_RATING, &info->power_rating)) != STD_ERR_OK) ||
+        ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_POWER_TYPE, &info->power_type)) != STD_ERR_OK)) {
+        return rc;
+    }
+
+    return STD_ERR_OK;
+}
+
 /*
  * Retrieve the entity info for the given resource handle
  */
@@ -387,7 +410,7 @@ t_std_error sdi_entity_info_read(sdi_resource_hdl_t res_hdl, sdi_entity_info_t *
     FILE              *fptr;
     sdi_entity_type_t entity_type;
     uint_t            base_mac[6];
-    static bool       is_init = false;
+    static bool       is_init = true;
 
     STD_ASSERT(info != NULL);
 
@@ -395,33 +418,13 @@ t_std_error sdi_entity_info_read(sdi_resource_hdl_t res_hdl, sdi_entity_info_t *
     memset(info, 0, sizeof(*info));
 
     /* Retrieve the fields one by one from the database */
-    #define ENTITY_INFO_GET(type, field, val) \
-        do { \
-            rc = sdi_db_ ## type ## _field_get(sdi_get_db_handle(), res_hdl, TABLE_INFO, (field), (val)); \
-            if (rc != STD_ERR_OK) { \
-                return rc; \
-            } \
-        } while(0)
-
-    /* Retrieve the product name */
-    ENTITY_INFO_GET(str, INFO_PRODUCT, info->prod_name);
-    ENTITY_INFO_GET(str, INFO_PPID, info->ppid);
-    ENTITY_INFO_GET(str, INFO_HW_REV, info->hw_revision);
-    ENTITY_INFO_GET(str, INFO_PLATFORM, info->platform_name);
-    ENTITY_INFO_GET(str, INFO_VENDOR, info->vendor_name);
-    ENTITY_INFO_GET(str, INFO_SERVICE_TAG, info->service_tag);
-    ENTITY_INFO_GET(int, INFO_NUM_MACS, (int *)&info->mac_size);
-    ENTITY_INFO_GET(int, INFO_NUM_FANS, &info->num_fans);
-    ENTITY_INFO_GET(int, INFO_FAN_MAX_SPEED, &info->max_speed);
-    ENTITY_INFO_GET(int, INFO_FAN_AIRFLOW, (int *)&info->air_flow);
-    ENTITY_INFO_GET(int, INFO_POWER_RATING, &info->power_rating);
-    ENTITY_INFO_GET(int, INFO_POWER_TYPE, (int *)&info->power_type);
-
-    #undef ENTITY_INFO_GET
+    if ((rc = sdi_entity_info_get(res_hdl, info)) != STD_ERR_OK) {
+        return rc;
+    }
 
     sdi_db_get_entity_type(sdi_get_db_handle(), res_hdl, &entity_type);
 
-    if(!is_init && entity_type == SDI_ENTITY_SYSTEM_BOARD) {
+    if(is_init && entity_type == SDI_ENTITY_SYSTEM_BOARD) {
         if(NULL != (fptr=fopen("/sys/class/net/eth0/address", "r"))) {
 
             if (fgets(c, sizeof(c), fptr) == NULL) {
@@ -449,7 +452,7 @@ t_std_error sdi_entity_info_read(sdi_resource_hdl_t res_hdl, sdi_entity_info_t *
             if (rc != STD_ERR_OK) {
                 return rc;
             }
-            is_init = true;
+            is_init = false;
             return STD_ERR_OK;
         }
     }
