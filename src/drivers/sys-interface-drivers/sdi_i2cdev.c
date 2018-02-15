@@ -232,14 +232,14 @@ static t_std_error sdi_i2cdev_acquire_bus (sdi_i2c_bus_hdl_t i2c_bus)
 
 static void i2c_reset(const char *func, int fd, sdi_smbus_operation_t operation, sdi_smbus_data_type_t data_type, uint_t commandbuf)
 {
-    static const char script[] = "/usr/bin/opx-i2c-reset";
+    static const char script[] = "/usr/libexec/opx-i2c-reset";
 
     /* Check if script exist and is executable, abort if not */
     if (access(script, X_OK) != 0)  return;
 
     /* Run script with parameters describing failed I2C/SMBus operation */
     char cmd_buf[128];
-    snprintf(cmd_buf, sizeof(cmd_buf), "%s %s %d %d %08x", script, func, operation, data_type, commandbuf);
+    snprintf(cmd_buf, sizeof(cmd_buf), "%s %s %d %d %d %08x", script, func, fd, operation, data_type, commandbuf);
     system(cmd_buf);
 }
 
