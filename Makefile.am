@@ -18,6 +18,7 @@ libopx_sdi_sys_la_SOURCES = \
 	src/hwcore/sdi_fan.c \
 	src/hwcore/sdi_host_system.c \
 	src/hwcore/sdi_media.c \
+        src/hwcore/sdi_power_monitor.c \
 	src/hwcore/sdi_led.c \
         src/framework/sdi_bus_api.c \
         src/framework/sdi_bus_framework.c \
@@ -108,6 +109,7 @@ libopx_sdi_sys_vm_la_SOURCES = \
         src/vmcore/sdi_vm_entity.c \
         src/vmcore/sdi_vm_fan.c \
         src/vmcore/sdi_vm_host_system.c \
+        src/vmcore/sdi_vm_power_monitor.c \
         src/vmcore/sdi_vm_led.c \
         src/vmcore/sdi_vm_media.c \
         src/vmcore/sdi_vm_nvram.c \

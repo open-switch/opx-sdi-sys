@@ -380,6 +380,31 @@ static t_std_error sdi_write_sensor_06_telemetry(sdi_resource_hdl_t resource_hdl
     return rc;
 }
 
+static t_std_error sdi_mailbox_enable(sdi_resource_hdl_t resource_hdl, bool messaging_enable) {
+    t_std_error rc = STD_ERR_OK;
+    uint8_t  mailbox_reg_value[SDI_COMM_DEV_MAILBOX_ENABLE_REG] = {0};
+    uint16_t reg_data =0;
+
+    if (messaging_enable) {
+        reg_data = SDI_COMM_DEV_MAILBOX_ENABLE;
+        mailbox_reg_value[0]  = (reg_data & 0xff);
+        mailbox_reg_value[1]  = ((reg_data >> 8) & 0xff) ;
+        rc = sdi_comm_dev_write(resource_hdl,COMM_DEV_I2C_ADDR,SDI_COMM_DEV_MAILBOX_ENABLE_REG,
+                SDI_COMM_DEV_MAILBOX_ENABLE_REG_SIZE, mailbox_reg_value);
+    } else {
+        reg_data = SDI_COMM_DEV_MAILBOX_DISABLE;
+        mailbox_reg_value[0]  = (reg_data & 0xff);
+        mailbox_reg_value[1]  = ((reg_data >> 8) & 0xff) ;
+        rc = sdi_comm_dev_write(resource_hdl,COMM_DEV_I2C_ADDR,SDI_COMM_DEV_MAILBOX_ENABLE_REG,
+                SDI_COMM_DEV_MAILBOX_ENABLE_REG_SIZE, mailbox_reg_value);
+    }
+
+    if (STD_ERR_OK != rc) {
+        SDI_DEVICE_ERRMSG_LOG("Error writing mailbox reg data rc=%d\n", rc);
+    }
+    return rc;
+}
+
 /*
  * Read Comm Dev Firmware Revision using Comm_Dev I2C bus
  */
@@ -532,7 +557,8 @@ static comm_dev_ctrl_t comm_dev_ctrl = {
     .access_fw_rev = sdi_read_write_iom_fw_revision,
     .write_temp_sensor = sdi_write_sensor_06_telemetry,
     .flush_msg_buffer = sdi_flush_msg_buffer,
-    .get_buffer_ready = sdi_is_buffer_ready
+    .get_buffer_ready = sdi_is_buffer_ready,
+    .messaging_enable = sdi_mailbox_enable
 };
 
 /*

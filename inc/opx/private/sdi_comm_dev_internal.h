@@ -54,6 +54,9 @@ typedef struct {
     /* For flushing write message buffer with I2C bus */
     t_std_error  (*flush_msg_buffer)(sdi_resource_hdl_t resource_hdl);
 
+    /* For Enabling messaging over comm dev */
+    t_std_error  (*messaging_enable)(sdi_resource_hdl_t resource_hdl, bool messaging_enable);
+
     /* For reading write buffer readiness info with I2C bus */
     t_std_error  (*get_buffer_ready)(sdi_resource_hdl_t resource_hdl, bool *ready);
 } comm_dev_ctrl_t;

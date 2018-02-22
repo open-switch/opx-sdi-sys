@@ -65,3 +65,8 @@ t_std_error sdi_comm_dev_is_msg_present(sdi_resource_hdl_t resource_hdl, bool *p
     return STD_ERR_OK;
 }
 
+/* SDI COMM DEV - Enable comm dev messagingi */
+t_std_error sdi_comm_dev_messaging_enable(sdi_resource_hdl_t resource_hdl, bool messaging_enable)
+{
+    return STD_ERR_OK;
+}

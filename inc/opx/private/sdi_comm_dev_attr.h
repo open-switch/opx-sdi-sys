@@ -49,6 +49,8 @@
 #define SDI_COMM_DEV_SVG_DATA_BYTES_SIZE                             2
 #define SDI_COMM_DEV_IOM_VENDOR_FW_REV                          0x7800    /* READ/WRITE */
 #define SDI_COMM_DEV_IOM_VENDOR_FW_REV_SIZE                         32
+#define SDI_COMM_DEV_MAILBOX_ENABLE_REG                         0x7B7E    /* READ/WRITE */
+#define SDI_COMM_DEV_MAILBOX_ENABLE_REG_SIZE                         2
 #define SDI_COMM_DEV_SENSOR_STATUS                              0x7C00    /* READ/WRITE */
 #define SDI_COMM_DEV_SENSOR_STATUS_SIZE                              4
 #define SDI_COMM_DEV_SENSOR_TELEMETRY_TYPE                      0x7C04    /* READ/WRITE */
@@ -122,6 +124,10 @@
 #define SDI_COMM_DEV_VENDOR_INTELLIGENCE_STATUS_BIT_RESET                 0
 #define SDI_COMM_DEV_VENDOR_INTELLIGENCE_STATUS_BIT_PORT_NOTIFICATION     1
 #define SDI_COMM_DEV_VENDOR_INTELLIGENCE_STATUS_BIT_NB_TMIEOUT_ALERT      2
+
+// BITS/VALUE TO ENABLE MAILBOX ON COMM DEV /0x7B7E
+#define SDI_COMM_DEV_MAILBOX_ENABLE   0x3
+#define SDI_COMM_DEV_MAILBOX_DISABLE  0x0
 
 // MISCELLANEOUS
 #define COMM_DEV_I2C_ADDR                                         0x32

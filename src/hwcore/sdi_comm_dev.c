@@ -170,6 +170,26 @@ t_std_error sdi_comm_dev_host_temperature_set(sdi_resource_hdl_t resource_hdl, i
 }
 
 /*
+ * Enable comm dev messaging
+ */
+t_std_error sdi_comm_dev_messaging_enable(sdi_resource_hdl_t resource_hdl, bool messaging_enable)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t comm_dev_hdl = NULL;
+
+    STD_ASSERT(resource_hdl != NULL);
+
+    comm_dev_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+    if (comm_dev_hdl->type != SDI_RESOURCE_COMM_DEV) {
+        return (SDI_ERRCODE(EPERM));
+    }
+
+    rc = ((comm_dev_ctrl_t *)comm_dev_hdl->callback_fns)->messaging_enable(resource_hdl, messaging_enable);
+
+    return rc;
+}
+
+/*
  * Flush message buffer
  */
 t_std_error sdi_comm_dev_flush_msg_buffer(sdi_resource_hdl_t resource_hdl)

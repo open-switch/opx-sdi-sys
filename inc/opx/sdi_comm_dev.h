@@ -130,6 +130,17 @@ t_std_error sdi_comm_dev_is_write_buffer_ready(sdi_resource_hdl_t comm_dev_resou
  */
 t_std_error sdi_comm_dev_is_msg_present(sdi_resource_hdl_t host_system_resource_hdl, bool *presence);
 
+
+
+/** SDI COMM DEV - Comm Dev messaging enable
+ * @param[in] comm_dev_resource_hdl; handle of the resource
+ * @param[in] booted; true/false booted flag value
+ * @return Success: STD_ERR_OK,
+ *         Failure: SDI_ERRCODE(EPERM)
+ */
+t_std_error sdi_comm_dev_messaging_enable(sdi_resource_hdl_t comm_dev_resource_hdl, bool messaging_enable);
+
+
 #ifdef __cplusplus
 }
 #endif
