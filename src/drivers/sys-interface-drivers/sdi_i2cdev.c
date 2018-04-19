@@ -240,7 +240,11 @@ static void i2c_reset(const char *func, int fd, sdi_smbus_operation_t operation,
     /* Run script with parameters describing failed I2C/SMBus operation */
     char cmd_buf[128];
     snprintf(cmd_buf, sizeof(cmd_buf), "%s %s %d %d %d %08x", script, func, fd, operation, data_type, commandbuf);
-    system(cmd_buf);
+    if (system(cmd_buf) == -1) {
+        SDI_DEVICE_ERRMSG_LOG("Unable to clear locked-up I2C controller");
+    }
+
+    return;
 }
 
 

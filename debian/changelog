@@ -1,3 +1,10 @@
+opx-sdi-sys (4.18.0+opx1) unstable; urgency=medium
+
+  * Update: Add compiler/linker hardening flags
+  * Bugfix: Fix build errors after hardening flags were added
+
+ -- Dell EMC <ops-dev@lists.openswitch.net>  Wed, 18 Mar 2018 15:00:00 -0800
+
 opx-sdi-sys (4.18.0) unstable; urgency=medium
 
   * Update: Power Monitor dummy API for VM

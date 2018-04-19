@@ -380,19 +380,21 @@ static t_std_error sdi_entity_info_get(sdi_resource_hdl_t res_hdl, sdi_entity_in
 {
     t_std_error rc;
     db_sql_handle_t db_hdl = sdi_get_db_handle();
+    char hw_rev_buffer[DB_SQL_OUTPUT_LEN];
 
     if (((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_PRODUCT, info->prod_name)) != STD_ERR_OK) ||
         ((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_PPID, info->ppid)) != STD_ERR_OK) ||
-        ((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_HW_REV, info->hw_revision)) != STD_ERR_OK) ||
+        ((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_HW_REV, hw_rev_buffer)) != STD_ERR_OK) ||
         ((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_PLATFORM, info->platform_name)) != STD_ERR_OK) ||
         ((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_VENDOR, info->vendor_name)) != STD_ERR_OK) ||
         ((rc = sdi_db_str_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_SERVICE_TAG, info->service_tag)) != STD_ERR_OK) ||
         ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_NUM_MACS, &info->mac_size)) != STD_ERR_OK) ||
         ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_NUM_FANS, &info->num_fans)) != STD_ERR_OK) ||
         ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_FAN_MAX_SPEED, &info->max_speed)) != STD_ERR_OK) ||
-        ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_FAN_AIRFLOW, &info->air_flow)) != STD_ERR_OK) ||
+        ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_FAN_AIRFLOW, (int*)&info->air_flow)) != STD_ERR_OK) ||
         ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_POWER_RATING, &info->power_rating)) != STD_ERR_OK) ||
-        ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_POWER_TYPE, &info->power_type)) != STD_ERR_OK)) {
+        ((rc = sdi_db_int_field_get(db_hdl, res_hdl, TABLE_INFO, INFO_POWER_TYPE, (int*)&info->power_type)) != STD_ERR_OK)) {
+        safestrncpy(info->hw_revision, hw_rev_buffer, SDI_HW_REV_LEN);
         return rc;
     }
 
