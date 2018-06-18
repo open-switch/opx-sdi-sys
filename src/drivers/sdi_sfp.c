@@ -197,7 +197,8 @@ static media_ctrl_t sfp_media = {
     .media_phy_link_status_get = sdi_sfp_phy_link_status_get,
     .media_phy_power_down_enable = sdi_sfp_phy_power_down_enable,
     .ext_rate_select = NULL, /* Ext rate select is not supported on SFP */
-    .media_phy_serdes_control = sdi_sfp_phy_serdes_control
+    .media_phy_serdes_control = sdi_sfp_phy_serdes_control,
+    .media_qsa_adapter_type_get = sdi_sfp_qsa_adapter_type_get
 };
 
 /*

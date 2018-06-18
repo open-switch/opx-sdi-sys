@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# For unit test requirements, refer to https://confluence.force10networks.com/display/AR/Unit+Test
+
+exit 0

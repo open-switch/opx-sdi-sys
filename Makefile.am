@@ -2,42 +2,12 @@ ACLOCAL_AMFLAGS=-I m4
 
 SUBDIRS = inc
 
-#The sdi-sys library
-lib_LTLIBRARIES = libopx_sdi_sys.la
-
 COMMON_HARDEN_FLAGS=-fexceptions -fstack-protector-strong -fstack-protector-all -D_FORTIFY_SOURCE=2 -Wall -Wformat -Wformat-security -Werror
 C_HARDEN_FLAGS=-Wimplicit-function-declaration 
-LD_HARDEN_FLAGS=-Wl,-z,defs -Wl,-z,now -Wl,-z,relo
+LD_HARDEN_FLAGS=-Wl,-z,defs -Wl,-z,now
 
 
-libopx_sdi_sys_la_SOURCES = \
-	src/hwcore/sdi_entity.c \
-	src/hwcore/sdi_entity_reset.c \
-	src/hwcore/sdi_comm_dev.c \
-	src/hwcore/sdi_nvram.c \
-	src/hwcore/sdi_startup.c \
-	src/hwcore/sdi_entity_info.c \
-	src/hwcore/sdi_entity_framework.c \
-	src/hwcore/sdi_thermal.c \
-	src/hwcore/sdi_fan.c \
-	src/hwcore/sdi_host_system.c \
-	src/hwcore/sdi_media.c \
-        src/hwcore/sdi_power_monitor.c \
-	src/hwcore/sdi_led.c \
-        src/framework/sdi_bus_api.c \
-        src/framework/sdi_bus_framework.c \
-        src/framework/sdi_driver_framework.c \
-        src/framework/sdi_i2c_bus_api.c \
-        src/framework/sdi_io_port_api.c \
-        src/framework/sdi_pin_bus_api.c \
-        src/framework/sdi_pin_group_bus_api.c \
-        src/framework/sdi_resource_framework.c \
-        src/framework/sdi_smartfusion_io_bus_api.c
-
-libopx_sdi_sys_la_LDFLAGS = -ldl -lopx_common -lopx_logging -lpthread -version-info 1:1:0 -shared $(LD_HARDEN_FLAGS)
-libopx_sdi_sys_la_CFLAGS = -I$(top_srcdir)/inc/opx  -I$(includedir)/opx  -I$(top_srcdir)/inc/opx/private -fpic $(COMMON_HARDEN_FLAGS) $(C_HARDEN_FLAGS)
-
-lib_LTLIBRARIES += libopx_sdi_framework.la
+lib_LTLIBRARIES = libopx_sdi_framework.la
 libopx_sdi_framework_la_SOURCES = \
         src/framework/sdi_bus_api.c \
         src/framework/sdi_bus_framework.c \
@@ -47,11 +17,40 @@ libopx_sdi_framework_la_SOURCES = \
         src/framework/sdi_pin_bus_api.c \
         src/framework/sdi_pin_group_bus_api.c \
         src/framework/sdi_resource_framework.c \
-        src/framework/sdi_smartfusion_io_bus_api.c 
+        src/framework/sdi_smartfusion_io_bus_api.c \
+        src/framework/sdi_bmc_bus_api.c \
+        src/framework/sdi_bmc_db.cpp \
+        src/framework/sdi_fpga_pci_bus_api.c
         
-libopx_sdi_framework_la_LDFLAGS = -ldl -lopx_common -lopx_logging -lpthread -version-info 1:1:0 -shared $(LD_HARDEN_FLAGS)
+libopx_sdi_framework_la_LIBADD = -ldl -lopx_common -lopx_logging -lpthread 
+libopx_sdi_framework_la_LDFLAGS = -version-info 1:1:0 -shared $(LD_HARDEN_FLAGS)
 
-libopx_sdi_framework_la_CFLAGS = -I$(top_srcdir)/inc/opx/private -I$(top_srcdir)/inc/opx  -I$(includedir)/opx -fpic $(COMMON_HARDEN_FLAGS) $(C_HARDEN_FLAGS)
+libopx_sdi_framework_la_CPPFLAGS = -I$(top_srcdir)/inc/opx/private -I$(top_srcdir)/inc/opx  -I$(includedir)/opx -fpic $(COMMON_HARDEN_FLAGS) 
+libopx_sdi_framework_la_CFLAGS = $(C_HARDEN_FLAGS)
+
+
+#The sdi-sys library
+lib_LTLIBRARIES += libopx_sdi_sys.la
+
+libopx_sdi_sys_la_SOURCES = \
+        src/hwcore/sdi_entity.c \
+        src/hwcore/sdi_entity_reset.c \
+        src/hwcore/sdi_comm_dev.c \
+        src/hwcore/sdi_nvram.c \
+        src/hwcore/sdi_startup.c \
+        src/hwcore/sdi_entity_info.c \
+        src/hwcore/sdi_entity_framework.c \
+        src/hwcore/sdi_thermal.c \
+        src/hwcore/sdi_fan.c \
+        src/hwcore/sdi_host_system.c \
+        src/hwcore/sdi_media.c \
+        src/hwcore/sdi_power_monitor.c \
+        src/hwcore/sdi_led.c
+
+libopx_sdi_sys_la_LIBADD = libopx_sdi_framework.la -lopx_common -lopx_logging
+libopx_sdi_sys_la_LDFLAGS = -version-info 1:1:0 -shared $(LD_HARDEN_FLAGS)
+libopx_sdi_sys_la_CFLAGS = $(C_HARDEN_FLAGS)
+libopx_sdi_sys_la_CPPFLAGS = -I$(top_srcdir)/inc/opx  -I$(includedir)/opx  -I$(top_srcdir)/inc/opx/private -fpic $(COMMON_HARDEN_FLAGS)
 
 
 lib_LTLIBRARIES += libopx_sdi_device_drivers.la
@@ -93,10 +92,18 @@ libopx_sdi_device_drivers_la_SOURCES = \
         src/drivers/sdi_tmp75.c \
         src/drivers/sys-interface-drivers/sdi_gpio.c \
         src/drivers/sys-interface-drivers/sdi_i2cdev.c\
-        src/drivers/sys-interface-drivers/sdi_sysfs_gpio_helpers.c
+        src/drivers/sys-interface-drivers/sdi_sysfs_gpio_helpers.c \
+        src/drivers/sdi_bmc.c \
+        src/drivers/sdi_bmc_dev.c \
+        src/drivers/sdi_bmc_entity_info.c \
+        src/drivers/sdi_bmc_fan.c \
+        src/drivers/sdi_bmc_io_bus.c \
+        src/drivers/sdi_bmc_tmp.c \
+        src/drivers/sdi_fpga_pci_bus.c
         
 
-libopx_sdi_device_drivers_la_LDFLAGS = -L$(top_srcdir) libopx_sdi_framework.la -lopx_common -lopx_logging -lz -lm -lpthread -version-info 1:1:0 -shared $(LD_HARDEN_FLAGS) -ldl
+libopx_sdi_device_drivers_la_LIBADD = libopx_sdi_framework.la -lopx_common -lopx_logging -lz -lm -lpthread -lOpenIPMI -lOpenIPMIposix
+libopx_sdi_device_drivers_la_LDFLAGS = -version-info 1:1:0 -shared $(LD_HARDEN_FLAGS) 
 libopx_sdi_device_drivers_la_CFLAGS = -I$(top_srcdir)/inc/opx -I$(top_srcdir)/inc/opx/private -I$(top_srcdir)/inc/opx/private/eeprom -I$(includedir)/opx -fpic $(COMMON_HARDEN_FLAGS) $(C_HARDEN_FLAGS)
 
 data_sdidir= $(sysconfdir)/opx/sdi
@@ -105,7 +112,7 @@ data_sdi_DATA = cfg/sdi/*.sql
 lib_LTLIBRARIES += libopx_sdi_db.la
 
 libopx_sdi_db_la_SOURCES = src/vmdb/sdi_db_ops.c
-libopx_sdi_db_la_CPPFLAGS = -I$(top_srcdir)/inc/opx -I$(includedir)/opx -I$(top_srcdir)/inc/opx/private -fpic $(COMMON_HARDEN_FLAGS) $(C_HARDEN_FLAGS)
+libopx_sdi_db_la_CPPFLAGS = -I$(top_srcdir)/inc/opx -I$(top_srcdir)/inc/opx/private -I$(includedir)/opx -fpic $(COMMON_HARDEN_FLAGS) $(C_HARDEN_FLAGS)
 libopx_sdi_db_la_LDFLAGS = -version-info 1:1:0 -shared $(LD_HARDEN_FLAGS)
 libopx_sdi_db_la_LIBADD = -lopx_db_sql
 
@@ -122,6 +129,6 @@ libopx_sdi_sys_vm_la_SOURCES = \
         src/vmcore/sdi_vm_sys.c \
         src/vmcore/sdi_vm_thermal.c
         
-libopx_sdi_sys_vm_la_CPPFLAGS = -I$(top_srcdir)/inc/opx  -I$(includedir)/opx  -I$(top_srcdir)/inc/opx/private -fpic $(COMMON_HARDEN_FLAGS) $(C_HARDEN_FLAGS)
-libopx_sdi_sys_vm_la_LDFLAGS = -L$(top_srcdir) -version-info 1:1:0 -shared $(LD_HARDEN_FLAGS)
+libopx_sdi_sys_vm_la_CPPFLAGS = -I$(top_srcdir)/inc/opx  -I$(top_srcdir)/inc/opx/private -I$(includedir)/opx -fpic $(COMMON_HARDEN_FLAGS) $(C_HARDEN_FLAGS)
+libopx_sdi_sys_vm_la_LDFLAGS = -version-info 1:1:0 -shared $(LD_HARDEN_FLAGS)
 libopx_sdi_sys_vm_la_LIBADD = libopx_sdi_db.la -lopx_logging -lpthread

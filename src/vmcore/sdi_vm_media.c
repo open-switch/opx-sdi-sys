@@ -517,4 +517,12 @@ t_std_error sdi_media_phy_serdes_control (sdi_resource_hdl_t resource_hdl, uint_
     return STD_ERR_OK;
 }
 
+/*
+ * API to get QSA adapter type
+ */
+t_std_error sdi_media_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl, sdi_qsa_adapter_type_t* qsa_adapter)
+{
+    *qsa_adapter = SDI_QSA_ADAPTER_NONE;
+    return STD_ERR_OK;
+}
 

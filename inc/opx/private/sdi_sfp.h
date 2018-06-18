@@ -35,6 +35,8 @@
 
 #define SDI_SFP_LED_HIGH_VALUE 1
 
+#define SDI_SFP_ZERO_WATT_POWER_IN_DBM NAN
+
 /**
  * @struct sdi_media_led_t
  * SFP LED related data
@@ -138,6 +140,13 @@ typedef struct {
     /** Rx optical power constant - 0 */
     uint8_t rx_power_const_0[EXT_CAL_RX_POWER_DATA_LEN];
 } sfp_rx_power_calib_info_t;
+
+/**
+ * @brief Converts a number from milliwatts to dbm
+ * @param[in] power_mw - The power value to be converted.
+ * @return - standard @ref float
+ */
+float sdi_convert_mw_to_dbm(float power_mw);
 
 /**
  * @brief Get the required module alarm status of sfp
@@ -432,5 +441,15 @@ t_std_error sdi_sfp_phy_power_down_enable (sdi_resource_hdl_t resource_hdl, uint
  */
 t_std_error sdi_sfp_phy_serdes_control (sdi_resource_hdl_t resource_hdl, uint_t channel,
                                         sdi_media_type_t type, bool enable);
+
+/**
+ * @brief API to get QSA adapter type
+ * resource_hdl[in] - Handle of the resource
+ * sdi_qsa_adapter_type_t*[out] - adapter type obtained
+ * return           - t_std_error
+ */
+
+t_std_error sdi_sfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
+                                   sdi_qsa_adapter_type_t* qsa_adapter);
 
 #endif

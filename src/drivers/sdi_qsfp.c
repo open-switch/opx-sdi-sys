@@ -306,7 +306,8 @@ static media_ctrl_t qsfp_media = {
     .media_phy_link_status_get = sdi_qsfp_phy_link_status_get,     /* Added for QSA support */
     .media_phy_power_down_enable = sdi_qsfp_phy_power_down_enable, /* Added for QSA support */
     .ext_rate_select = sdi_qsfp_ext_rate_select,
-    .media_phy_serdes_control = sdi_qsfp_phy_serdes_control         /* Added for QSA support */
+    .media_phy_serdes_control = sdi_qsfp_phy_serdes_control,         /* Added for QSA support */
+    .media_qsa_adapter_type_get = sdi_qsfp_qsa_adapter_type_get   /* QSA info get */
 };
 
 /*

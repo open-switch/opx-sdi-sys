@@ -56,6 +56,13 @@
 
 #define SDI_QSFP_PADDING_CHAR 0
 #define SDI_QSFP_GARBAGE_CHAR_INDICATOR '?'
+
+/* To be removed once full qsfp28 dd rev 2 support is added */
+#define QSFP28_DD_EEPROM_VERSION_OFFSET   1
+#define QSFP28_DD_EEPROM_VERSION_2        0x20
+#define QSFP28_DD_DATAPATH_POWERUP_OFFSET 92
+#define QSFP28_DD_DATAPATH_POWERUP_VALUE  0xFF
+
 /* QSFP channel numbers */
 enum {
     SDI_QSFP_CHANNEL_ONE = 0,
@@ -441,7 +448,7 @@ static inline float convert_qsfp_volt(uint8_t *buf)
  * total measurement range of 0 to 6.5535 mW (~-40 to +8.2 dBm). */
 static inline float convert_qsfp_rx_power(uint8_t *buf)
 {
-        return ((float)((buf[0] << 8) | (buf[1]))/10000.0);
+        return sdi_convert_mw_to_dbm((float)((buf[0] << 8) | (buf[1]))/10000.0);
 }
 
 /* Measured TX bias current is in mA and are represented as a 16-bit unsigned
@@ -1202,7 +1209,7 @@ t_std_error sdi_qsfp_cdr_status_get(sdi_resource_hdl_t resource_hdl,
                 *status = false;
             }
         } else {
-            if (STD_BIT_TEST(buf, QSFP_TX_CDR_CONTROL_BIT(channel)) 
+            if (STD_BIT_TEST(buf, QSFP_TX_CDR_CONTROL_BIT(channel))
                     || STD_BIT_TEST(buf, QSFP_RX_CDR_CONTROL_BIT(channel))) {
                 *status = true;
             } else {
@@ -2018,7 +2025,7 @@ t_std_error sdi_qsfp_read_generic (sdi_resource_hdl_t resource_hdl, sdi_media_ee
  * Raw write api for media eeprom
  * resource_hdl[in] - Handle of the resource
  * addr[in]          - pointer to struct that holds address, page and offset info
- * data[in]      - Data to write 
+ * data[in]      - Data to write
  * data_len[in]     - length of the data to be written
  * return           - t_std_error
  */
@@ -2407,10 +2414,57 @@ t_std_error sdi_qsfp_module_init (sdi_resource_hdl_t resource_hdl, bool pres)
             qsfp_priv_data->sfp_device = sfp_device;
 
         } else {
-            rc = sdi_qsfp_page_select(qsfp_device, SDI_MEDIA_PAGE_DEFAULT);
-            if(rc != STD_ERR_OK) {
-                SDI_DEVICE_ERRMSG_LOG("page 0 selection is failed for %s",
+            bool paging_support = false;
+
+            if (sdi_is_paging_supported(qsfp_device, &paging_support) != STD_ERR_OK){
+                SDI_DEVICE_ERRMSG_LOG("Unable to check for paging support on %s",
                         qsfp_device->alias);
+            } else if (paging_support) {
+                rc = sdi_qsfp_page_select(qsfp_device, SDI_MEDIA_PAGE_DEFAULT);
+                if(rc != STD_ERR_OK) {
+                    SDI_DEVICE_ERRMSG_LOG("page 0 selection is failed for %s",
+                            qsfp_device->alias);
+                }
+             }
+            /* If QSFP28-DD, need to check revision and if revision is 0.2, powerup datapath */
+            if (identifier == 0x18) {
+
+                uint8_t eeprom_version = 0;
+                rc = sdi_smbus_read_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
+                    QSFP28_DD_EEPROM_VERSION_OFFSET, &eeprom_version, SDI_I2C_FLAG_NONE);
+                if (rc != STD_ERR_OK) {
+                    SDI_DEVICE_ERRMSG_LOG("Unable to read QSFP28-DD %s eeprom version. rc: %d ",
+                    qsfp_device->alias, rc);
+                }
+
+                if (eeprom_version == QSFP28_DD_EEPROM_VERSION_2) {
+                    SDI_DEVICE_TRACEMSG_LOG("Found media with rev 0.2 QSFP28-DD eeprom on %s",
+                        qsfp_device->alias);
+
+                    std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
+
+                    SDI_DEVICE_TRACEMSG_LOG("Attempting to powerup datapath on %s",
+                        qsfp_device->alias);
+
+                    rc = sdi_smbus_write_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
+                              QSFP28_DD_DATAPATH_POWERUP_OFFSET, QSFP28_DD_DATAPATH_POWERUP_VALUE, SDI_I2C_FLAG_NONE);
+                    if (rc != STD_ERR_OK) {
+                        SDI_DEVICE_ERRMSG_LOG("Unable to write datapath powerup byte to QSFP28-DD %s eeprom version. rc: %d ",
+                            qsfp_device->alias, rc);
+                    }
+                    std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
+
+                    rc = sdi_smbus_read_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
+                        QSFP28_DD_DATAPATH_POWERUP_OFFSET, &eeprom_version, SDI_I2C_FLAG_NONE);
+                    if (rc != STD_ERR_OK) {
+                        SDI_DEVICE_ERRMSG_LOG("Unable to read QSFP28-DD %s datapath powerup byte. rc: %d ",
+                            qsfp_device->alias, rc);
+                    }
+                    if ((eeprom_version != QSFP28_DD_DATAPATH_POWERUP_VALUE) | (rc != STD_ERR_OK)) {
+                        SDI_DEVICE_ERRMSG_LOG("Datapath powerup failed. Read back %u,  error %u",
+                            qsfp_device->alias, eeprom_version, rc);
+                    }
+                }
             }
         }
 
@@ -2425,7 +2479,7 @@ t_std_error sdi_qsfp_module_init (sdi_resource_hdl_t resource_hdl, bool pres)
 /**
  * Get media PHY link status.
  * resource_hdl[in] - Handle of the resource
- * channel[in]      - channel number 
+ * channel[in]      - channel number
  * type             - media type
  * status           - true - link up, false - link down
  * return           - t_std_error
@@ -2454,7 +2508,7 @@ t_std_error sdi_qsfp_phy_link_status_get (sdi_resource_hdl_t resource_hdl, uint_
 /**
  * Set power down state (enable/disable) on media PHY.
  * resource_hdl[in] - Handle of the resource
- * channel[in]      - channel number 
+ * channel[in]      - channel number
  * type             - media type
  * enable           - true - power down, false - power up
  * return           - t_std_error
@@ -2483,7 +2537,7 @@ t_std_error sdi_qsfp_phy_power_down_enable (sdi_resource_hdl_t resource_hdl, uin
 /**
  * Control (enable/disable) Fiber/Serdes tx and RX on media PHY.
  * resource_hdl[in] - Handle of the resource
- * channel[in]      - channel number 
+ * channel[in]      - channel number
  * type             - media type
  * enable           - true - Enable Serdes, false - Disable Serdes
  * return           - t_std_error
@@ -2524,7 +2578,7 @@ t_std_error sdi_qsfp_ext_rate_select (sdi_resource_hdl_t resource_hdl, uint_t ch
     sdi_device_hdl_t qsfp_device = NULL;
     qsfp_device_t *qsfp_priv_data = NULL;
     t_std_error rc = STD_ERR_OK;
-    uint8_t rx_buf, tx_buf = 0x0; 
+    uint8_t rx_buf, tx_buf = 0x0;
 
     STD_ASSERT(resource_hdl != NULL);
     qsfp_device = (sdi_device_hdl_t)resource_hdl;
@@ -2605,6 +2659,113 @@ t_std_error sdi_qsfp_ext_rate_select (sdi_resource_hdl_t resource_hdl, uint_t ch
     sdi_qsfp_module_deselect(qsfp_priv_data);
     return rc;
 }
+
+/**
+ * @brief API to get QSA adapter type
+ * resource_hdl[in] - Handle of the resource
+ * sdi_qsa_adapter_type_t*[out] - adapter type obtained
+ * return           - t_std_error
+ */
+
+t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
+                                   sdi_qsa_adapter_type_t* qsa_adapter)
+{
+    sdi_device_hdl_t qsfp_device = NULL;
+    qsfp_device_t *qsfp_priv_data = NULL;
+
+    uint8_t buf [SDI_QSFP_QSA28_OUI_LEN] = {0};
+    t_std_error rc = STD_ERR_OK;
+
+    STD_ASSERT(resource_hdl != NULL);
+    qsfp_device = (sdi_device_hdl_t)resource_hdl;
+    qsfp_priv_data = (qsfp_device_t *)qsfp_device->private_data;
+    STD_ASSERT(qsfp_priv_data != NULL);
+
+    if (qsfp_priv_data->mod_type != QSFP_QSA_ADAPTER) {
+        *qsa_adapter = SDI_QSA_ADAPTER_NONE;
+        return rc;
+    }
+
+    rc = sdi_pin_group_acquire_bus(qsfp_priv_data->mod_reset_hdl);
+    if (rc != STD_ERR_OK){
+        SDI_DEVICE_ERRMSG_LOG("COuld not acquire bus when attempting module reset for QSA detection");
+        *qsa_adapter = SDI_QSA_ADAPTER_UNKNOWN;
+        sdi_pin_group_release_bus(qsfp_priv_data->mod_reset_hdl);
+        return rc;
+    }
+
+    /* Put module in reset mode */
+    do {
+        uint_t value = 0;
+        rc = sdi_pin_group_read_level(qsfp_priv_data->mod_reset_hdl, &value);
+        if (rc != STD_ERR_OK){
+            SDI_DEVICE_ERRMSG_LOG("module reset status get failed for %s", qsfp_device->alias);
+            break;
+        }
+        STD_BIT_SET(value, qsfp_priv_data->mod_reset_bitmask);
+        rc = sdi_pin_group_write_level(qsfp_priv_data->mod_reset_hdl, value);
+        if (rc != STD_ERR_OK){
+            SDI_DEVICE_ERRMSG_LOG("module reset set failed for %s", qsfp_device->alias);
+            break;
+        }
+    } while(0);
+    sdi_pin_group_release_bus(qsfp_priv_data->mod_reset_hdl);
+
+    if ((rc = sdi_qsfp_module_select(qsfp_device)) != STD_ERR_OK) {
+        SDI_DEVICE_ERRMSG_LOG("QSFP module selection failed when attempting QSA info get for %s",
+             qsfp_device->alias);
+        *qsa_adapter = SDI_QSA_ADAPTER_UNKNOWN;
+        sdi_qsfp_module_deselect(qsfp_priv_data);
+        return rc;
+    }
+
+    do {
+        std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
+
+        rc = sdi_smbus_read_multi_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
+                                SDI_QSFP_QSA28_OUI_OFFSET, buf, sizeof(buf), SDI_I2C_FLAG_NONE);
+
+        if(rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Unable to read adapter info when attempting QSA info get for %s",
+                 qsfp_device->alias);
+            *qsa_adapter = SDI_QSA_ADAPTER_UNKNOWN;
+        }
+        else if ((buf[0] == SDI_QSFP_QSA28_OUI_VAL0) && (buf[1] == SDI_QSFP_QSA28_OUI_VAL1)
+           && (buf[2] == SDI_QSFP_QSA28_OUI_VAL2)){
+            *qsa_adapter = SDI_QSA_ADAPTER_QSA28;
+        } else {
+            *qsa_adapter = SDI_QSA_ADAPTER_QSA;
+        }
+    } while(0);
+
+    sdi_qsfp_module_deselect(qsfp_priv_data);
+
+    /* Bring module out of reset mode */
+    rc = sdi_pin_group_acquire_bus(qsfp_priv_data->mod_reset_hdl);
+    if (rc != STD_ERR_OK){
+        SDI_DEVICE_ERRMSG_LOG("Could not acquire bus when attempting module reset for QSA detection");
+        sdi_pin_group_release_bus(qsfp_priv_data->mod_reset_hdl);
+        return rc;
+    }
+
+    do {
+        uint_t value = 0;
+        rc = sdi_pin_group_read_level(qsfp_priv_data->mod_reset_hdl, &value);
+        if (rc != STD_ERR_OK){
+            SDI_DEVICE_ERRMSG_LOG("module reset status get failed after QSA read for %s", qsfp_device->alias);
+            break;
+        }
+        STD_BIT_CLEAR(value, qsfp_priv_data->mod_reset_bitmask);
+        rc = sdi_pin_group_write_level(qsfp_priv_data->mod_reset_hdl, value);
+        if (rc != STD_ERR_OK){
+            SDI_DEVICE_ERRMSG_LOG("module reset clear failed after QSA read for %s. Device may not work as expected", qsfp_device->alias);
+            break;
+        }
+    } while(0);
+    sdi_pin_group_release_bus(qsfp_priv_data->mod_reset_hdl);
+    return rc;
+}
+
 
 /*
  * @brief Set wavelength for tunable media

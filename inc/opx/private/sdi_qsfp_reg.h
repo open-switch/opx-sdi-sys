@@ -257,4 +257,11 @@ typedef enum {
 #define QSFP_WAVELENGTH_DIVIDER             20
 #define QSFP_WAVELENGTH_TOLERANCE_DIVIDER   200
 
+/* For QSA28 info */
+#define SDI_QSFP_QSA28_OUI_OFFSET                  64
+#define SDI_QSFP_QSA28_OUI_LEN                     3
+#define SDI_QSFP_QSA28_OUI_VAL0                    0x00
+#define SDI_QSFP_QSA28_OUI_VAL1                    0x02
+#define SDI_QSFP_QSA28_OUI_VAL2                    0xC9
+
 #endif

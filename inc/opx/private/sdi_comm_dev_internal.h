@@ -48,6 +48,12 @@ typedef struct {
     /* For writing temperature to sensor 06 telemetry with I2C bus */
     t_std_error  (*write_temp_sensor)(sdi_resource_hdl_t resource_hdl, int regData);
 
+    /* For writing temperature to sensor 06 telemetry with I2C bus */
+    t_std_error  (*write_npu_temp_sensor)(sdi_resource_hdl_t resource_hdl, int regData);
+
+    /* For writing temperature to sensor 07 telemetry with I2C bus */
+    t_std_error  (*write_ambient_temp_sensor)(sdi_resource_hdl_t resource_hdl, int regData);
+
     /* For reading static platform info with I2C bus */
     t_std_error  (*read_platform_info)(sdi_resource_hdl_t resource_hdl, sdi_platform_info_t *platform_info);
 

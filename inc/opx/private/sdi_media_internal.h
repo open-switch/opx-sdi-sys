@@ -177,6 +177,11 @@ typedef struct {
     /* For enable/disable Fiber/Serdes Transmitter and Receiver*/
     t_std_error (*media_phy_serdes_control)(sdi_resource_hdl_t resource_hdl,
             uint_t channel, sdi_media_type_t type, bool enable);
+
+    /* For obtaining the QSA adapter type */
+    t_std_error (*media_qsa_adapter_type_get)(sdi_resource_hdl_t resource_hdl,
+            sdi_qsa_adapter_type_t* qsa_adapter);
+
 } media_ctrl_t;
 
 #endif

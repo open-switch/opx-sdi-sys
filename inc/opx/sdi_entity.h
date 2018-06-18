@@ -119,6 +119,8 @@ typedef enum {
     /** Resource monitors power usage
      *  see also @ref sdi_power_monitor_api */
     SDI_RESOURCE_POWER_MONITOR,
+    /** Resource which holds other resource's info */
+    SDI_RESOURCE_BMC_DEV,
 
     SDI_RESOURCE_MAX            /* Always last */
 } sdi_resource_type_t;

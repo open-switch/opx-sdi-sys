@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# For unit test requirements, refer to https://confluence.force10networks.com/display/AR/Unit+Test
+
+# Add Google Test (GTest) framework, any failures should return non-zero
+
+exit 0
+
+

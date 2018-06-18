@@ -389,4 +389,15 @@ t_std_error sdi_qsfp_ext_rate_select (sdi_resource_hdl_t resource_hdl, uint_t ch
 t_std_error sdi_qsfp_phy_serdes_control (sdi_resource_hdl_t resource_hdl, uint_t channel,
                                         sdi_media_type_t type, bool enable);
 
+/**
+ * @brief API to get QSA adapter type
+ * resource_hdl[in] - Handle of the resource
+ * sdi_qsa_adapter_type_t*[out] - adapter type obtained
+ * return           - t_std_error
+ */
+
+t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
+                                   sdi_qsa_adapter_type_t* qsa_adapter);
+
+
 #endif

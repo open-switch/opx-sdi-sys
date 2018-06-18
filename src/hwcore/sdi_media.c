@@ -1178,3 +1178,35 @@ t_std_error sdi_media_wavelength_set (sdi_resource_hdl_t resource_hdl, float val
 
     return rc;
 }
+
+/**
+ * @brief API to get QSA adapter type
+ * resource_hdl[in] - Handle of the resource
+ * sdi_qsa_adapter_type_t*[out] - adapter type obtained
+ * return           - t_std_error
+ */
+
+t_std_error sdi_media_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
+                                   sdi_qsa_adapter_type_t* qsa_adapter)
+{
+    t_std_error rc = STD_ERR_OK;
+    sdi_resource_priv_hdl_t media_hdl = NULL;
+
+    STD_ASSERT(resource_hdl != NULL);
+
+    media_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+
+    if (media_hdl->type != SDI_RESOURCE_MEDIA){
+        return(SDI_ERRCODE(EPERM));
+    }
+
+    rc = ((media_ctrl_t *)media_hdl->callback_fns)->media_qsa_adapter_type_get(media_hdl->callback_hdl,
+                                                   qsa_adapter);
+
+    if (rc != STD_ERR_OK){
+        SDI_ERRMSG_LOG("Failed to get QSA adapter type for the module for %s, error code : %d(0x%x)",
+                media_hdl->name, rc, rc);
+    }
+    return rc;
+
+}

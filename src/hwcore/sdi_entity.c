@@ -28,7 +28,9 @@
 #include "sdi_sys_common.h"
 #include "sdi_pin_bus_api.h"
 #include "sdi_pin_group_bus_api.h"
+#include "sdi_bmc_internal.h"
 #include "private/sdi_entity_internal.h"
+#include "private/sdi_bmc_bus_api.h"
 #include "std_assert.h"
 #include "std_bit_ops.h"
 
@@ -51,11 +53,28 @@ t_std_error sdi_entity_presence_get(sdi_entity_hdl_t entity_hdl, bool *presence)
 
     entity_priv_hdl = (sdi_entity_priv_hdl_t)entity_hdl;
     if (STD_BIT_TEST(entity_priv_hdl->oper_support_flag, SDI_HOTSWAPPABLE)) {
-        STD_ASSERT(entity_priv_hdl->pres_pin_hdl != NULL);
-        rc = sdi_pin_read_level(entity_priv_hdl->pres_pin_hdl,
-                                 &bus_val);
-        if(rc != STD_ERR_OK){
+        if (entity_priv_hdl->access_type == SDI_ENT_ACCESS_BMC) {
+            uint32_t reading = 0;
+            rc = sdi_bmc_dc_sensor_reading_get_by_name(entity_priv_hdl->pres_attr, &reading);
+            if (rc == STD_ERR_OK) {
+                if (entity_priv_hdl->type == SDI_ENTITY_FAN_TRAY) {
+                    *presence = ((reading == SDI_BMC_ENTITY_PRESENT) ? true : false);
+                } else if (entity_priv_hdl->type == SDI_ENTITY_PSU_TRAY) {
+                    if (STD_BIT_TEST(reading, SDI_BMC_PSU_STATUS_PRSNT)) {
+                        *presence = true;
+                    } else {
+                        *presence = false;
+                    }
+                }
+            }
             return rc;
+        } else {
+            STD_ASSERT(entity_priv_hdl->pres_pin_hdl != NULL);
+            rc = sdi_pin_read_level(entity_priv_hdl->pres_pin_hdl,
+                                    &bus_val);
+            if(rc != STD_ERR_OK){
+                return rc;
+            }
         }
     } else {
         *presence = true;
@@ -187,6 +206,18 @@ t_std_error sdi_entity_psu_output_power_status_get(sdi_entity_hdl_t entity_hdl,
            SDI_ERRMSG_LOG("Error in getting psu output power status, rc=%d",rc);
         } else {
            *status = ( (bus_val == SDI_PIN_LEVEL_HIGH) ? true : false );
+        }
+    } else if (entity_priv_hdl->access_type == SDI_ENT_ACCESS_BMC) {
+        uint32_t reading = 0;
+        rc = sdi_bmc_dc_sensor_reading_get_by_name(entity_priv_hdl->power_output_status_attr,
+                                                   &reading);
+        if (rc == STD_ERR_OK) {
+            if ((STD_BIT_TEST(reading, SDI_BMC_PSU_STATUS_FAILURE))
+                    || (STD_BIT_TEST(reading, SDI_BMC_PSU_STATUS_INPUT_LOST))) {
+                *status = false;
+            } else {
+                *status = true;
+            }
         }
     }
     return rc;
