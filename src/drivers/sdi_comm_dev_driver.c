@@ -39,6 +39,7 @@ static sdi_i2c_addr_t device_i2c_addr = { .i2c_addr = COMM_DEV_I2C_ADDR, .addr_m
 static t_std_error sdi_comm_dev_driver_register(std_config_node_t node, void *bus_handle, sdi_device_hdl_t *device_hdl);
 static t_std_error sdi_comm_dev_driver_init(sdi_device_hdl_t device_hdl);
 static t_std_error sdi_comm_dev_status_check_and_clear(sdi_resource_hdl_t resource_hdl);
+static t_std_error sdi_comm_dev_reset_refresh(sdi_resource_hdl_t resource_hdl);
 
 /*
  * Generic read api for Comm_Dev I2C
@@ -369,10 +370,38 @@ static t_std_error sdi_write_sensor_06_telemetry(sdi_resource_hdl_t resource_hdl
     t_std_error rc = STD_ERR_OK;
     uint8_t  temp[SDI_COMM_DEV_SENSOR_06_TELEMETRY_SIZE] = {0};
     uint16_t* p_temperature = (uint16_t*) &temp[0];
+
+   // refresh comm dev register values if there is a dynamic reset
+    rc = sdi_comm_dev_reset_refresh(resource_hdl);
+    if (STD_ERR_OK != rc) {
+        SDI_DEVICE_ERRMSG_LOG("Error refeshing comm dev reset status rc=%d\n", rc);
+        return rc;
+    }
+
     // Comm_Dev expects temperatures in tenths of degree Celsius, so multiply input value by 10
     *p_temperature = input_temperature * 10;
 
     rc = sdi_comm_dev_write(resource_hdl, COMM_DEV_I2C_ADDR, SDI_COMM_DEV_SENSOR_06_TELEMETRY, SDI_COMM_DEV_SENSOR_06_TELEMETRY_SIZE, &temp[0]);
+
+    if (STD_ERR_OK != rc) {
+        SDI_DEVICE_ERRMSG_LOG("Error writing temperature sensor data rc=%d\n", rc);
+    }
+    return rc;
+}
+
+/*
+ * Write NPU temperature to Comm Dev sensor# 07 using
+ * Comm_Dev I2C bus
+ */
+static t_std_error sdi_write_sensor_07_telemetry(sdi_resource_hdl_t resource_hdl, int input_temperature) {
+    t_std_error rc = STD_ERR_OK;
+    uint8_t  temp[SDI_COMM_DEV_SENSOR_07_TELEMETRY_SIZE] = {0};
+    uint16_t* p_temperature = (uint16_t*) &temp[0];
+
+    // Comm_Dev expects temperatures in tenths of degree Celsius, so multiply input value by 10
+    *p_temperature = input_temperature * 10;
+
+    rc = sdi_comm_dev_write(resource_hdl, COMM_DEV_I2C_ADDR, SDI_COMM_DEV_SENSOR_07_TELEMETRY, SDI_COMM_DEV_SENSOR_07_TELEMETRY_SIZE, &temp[0]);
 
     if (STD_ERR_OK != rc) {
         SDI_DEVICE_ERRMSG_LOG("Error writing temperature sensor data rc=%d\n", rc);
@@ -500,10 +529,57 @@ static t_std_error sdi_is_buffer_ready(sdi_resource_hdl_t resource_hdl, bool *re
     return rc;
 }
 
+
+/*
+ * Refresh comm dev after a dynamic reset after an update
+ */
+static t_std_error sdi_comm_dev_reset_refresh(sdi_resource_hdl_t resource_hdl)
+{
+    t_std_error rc = STD_ERR_OK;
+    uint8_t     comm_dev_status[SDI_COMM_DEV_VENDOR_INTELLIGENCE_STATUS_REGISTER_SIZE] = {0};
+    uint8_t     mailbox_reg_value[SDI_COMM_DEV_MAILBOX_ENABLE_REG_SIZE] = {0};
+    uint16_t    reg_data =0;
+
+
+    rc = sdi_comm_dev_read(resource_hdl, COMM_DEV_I2C_ADDR, SDI_COMM_DEV_VENDOR_INTELLIGENCE_STATUS_REGISTER, SDI_COMM_DEV_VENDOR_INTELLIGENCE_STATUS_REGISTER_SIZE, &comm_dev_status[0]);
+
+    if( rc == STD_ERR_OK) {
+        if (STD_BIT_TEST(comm_dev_status[0], SDI_COMM_DEV_VENDOR_INTELLIGENCE_STATUS_BIT_RESET) == 0) {
+            SDI_DEVICE_TRACEMSG_LOG("Comm dev  reports reset Alarm\n");
+            reg_data = SDI_COMM_DEV_MAILBOX_ENABLE;
+            mailbox_reg_value[0]  = (reg_data & 0xff);
+            mailbox_reg_value[1]  = ((reg_data >> 8) & 0xff) ;
+            rc = sdi_comm_dev_write(resource_hdl,COMM_DEV_I2C_ADDR,SDI_COMM_DEV_MAILBOX_ENABLE_REG,
+                    SDI_COMM_DEV_MAILBOX_ENABLE_REG_SIZE, mailbox_reg_value);
+
+            if (STD_ERR_OK != rc) {
+                SDI_DEVICE_ERRMSG_LOG("Error writing mailbox reg data rc=%d\n", rc);
+                return rc;
+            }
+        }
+
+        uint16_t* p_comm_dev_status  = (uint16_t*) &comm_dev_status[0];
+        *p_comm_dev_status = COMM_DEV_STATUS_CLEAR;
+
+        // Clear reset Alert in comm dev status register
+        rc = sdi_comm_dev_write(resource_hdl, COMM_DEV_I2C_ADDR, SDI_COMM_DEV_VENDOR_INTELLIGENCE_STATUS_REGISTER,
+                SDI_COMM_DEV_VENDOR_INTELLIGENCE_STATUS_REGISTER_SIZE, &comm_dev_status[0]);
+
+        if (STD_ERR_OK != rc) {
+            SDI_DEVICE_ERRMSG_LOG("Error writing Flush Commdev status Alerts rc=%d\n", rc);
+            return rc;
+        }
+
+    }else{
+        SDI_DEVICE_ERRMSG_LOG("Error reading Commdev Status rc=%d\n", rc);
+    }
+
+    return rc;
+}
+
 /*
  * Read Comm dev status Alerts and clear
  */
-
 static t_std_error sdi_comm_dev_status_check_and_clear(sdi_resource_hdl_t resource_hdl)
 {
     t_std_error rc = STD_ERR_OK;
@@ -556,6 +632,8 @@ static comm_dev_ctrl_t comm_dev_ctrl = {
     .read_platform_info = sdi_read_platform_info,
     .access_fw_rev = sdi_read_write_iom_fw_revision,
     .write_temp_sensor = sdi_write_sensor_06_telemetry,
+    .write_npu_temp_sensor = sdi_write_sensor_06_telemetry,
+    .write_ambient_temp_sensor = sdi_write_sensor_07_telemetry,
     .flush_msg_buffer = sdi_flush_msg_buffer,
     .get_buffer_ready = sdi_is_buffer_ready,
     .messaging_enable = sdi_mailbox_enable

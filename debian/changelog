@@ -1,3 +1,13 @@
+opx-sdi-sys (4.21.0) unstable; urgency=medium
+
+  * Bugfix: LED not working on z9264
+  * Bugfix: Temperature reporting on IOM
+  * Bugfix: Fantray presence not detected properly
+  * Bugfix: Errors in media detection
+  * Update: Add QSA adapter support
+
+ -- Dell EMC <ops-dev@lists.openswitch.net>  Fri, 25 Mar 2018 15:00:00 -0800
+
 opx-sdi-sys (4.18.0+opx1) unstable; urgency=medium
 
   * Update: Add compiler/linker hardening flags

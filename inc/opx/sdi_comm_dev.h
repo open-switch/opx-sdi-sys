@@ -107,6 +107,24 @@ t_std_error sdi_comm_dev_host_sw_version_set(sdi_resource_hdl_t comm_dev_resourc
  */
 t_std_error sdi_comm_dev_host_temperature_set(sdi_resource_hdl_t comm_dev_resource_hdl, int temp);
 
+/** SDI COMM DEV - Write NPU temperature reading from Host System
+ *  into Comm_Dev
+ * @param[in] comm_dev_resource_hdl; handle of the resource
+ * @param[in] temp; temperature to be written
+ * @return Success: STD_ERR_OK,
+ *         Failure: SDI_ERRCODE(EPERM)
+ */
+t_std_error sdi_comm_dev_host_npu_temperature_set(sdi_resource_hdl_t comm_dev_resource_hdl, int temp);
+
+/** SDI COMM DEV - Write Ambient temperature reading from Host System
+ *  into Comm_Dev
+ * @param[in] comm_dev_resource_hdl; handle of the resource
+ * @param[in] temp; temperature to be written
+ * @return Success: STD_ERR_OK,
+ *         Failure: SDI_ERRCODE(EPERM)
+ */
+t_std_error sdi_comm_dev_host_ambient_temperature_set(sdi_resource_hdl_t comm_dev_resource_hdl, int temp);
+
 /** SDI COMM DEV - Flush write message buffer
  * @param[in] comm_dev_resource_hdl; handle of the resource
  * @return Success: STD_ERR_OK,

@@ -44,6 +44,15 @@
 #include "std_llist.h"
 
 /**
+ * @enum sdi_entity_access_type_t
+ * Is device can be accessed directly or not.
+ */
+typedef enum {
+    SDI_ENT_ACCESS_DIRECT, /** Direct access */
+    SDI_ENT_ACCESS_BMC,    /** Via BMC */
+} sdi_entity_access_type_t;
+
+/**
  * @struct sdi_entity_t
  * entity data structure which contains details of an entity
  */
@@ -54,11 +63,14 @@ struct sdi_entity {
                                * power control support, etc.
                                * see also @ref sdi_entity_feature_t */
     sdi_entity_type_t type; /**<type of an entity*/
+    sdi_entity_access_type_t access_type; /**<Access type see sdi_entity_access_type_t */
     uint_t instance; /**<instance of an entity*/
     uint_t reset_value[MAX_NUM_RESET]; /**<value to reset as per type */
     uint_t delay; /**<apply default config after power ON - duration */
+    char power_output_status_attr[SDI_MAX_NAME_LEN]; /** power status attr configured in cfg file */
     sdi_pin_bus_hdl_t power_output_status_pin_hdl; /**<psu power output
                                                     * status handler */
+    char pres_attr[SDI_MAX_NAME_LEN]; /** presence attr configured in entity.xml */
     sdi_pin_bus_hdl_t pres_pin_hdl; /**<presence handler */
     sdi_pin_bus_hdl_t fault_status_pin_hdl; /**<fault status handler */
     sdi_pin_bus_hdl_t power_pin_hdl; /**<power ON/OFF handler */

@@ -91,7 +91,15 @@ typedef enum{
     /**
      * Air flow direction is Reverse = 1
      */
-    SDI_PWR_AIR_FLOW_REVERSE
+    SDI_PWR_AIR_FLOW_REVERSE,
+    /**
+     * Air flow direction is Unknown = 2
+     */
+    SDI_PWR_AIR_FLOW_UNKNOWN,
+    /**
+     * Air flow direction is Not Applicable = 3
+     */
+    SDI_PWR_AIR_FLOW_NOT_APPLICABLE,
 }sdi_air_flow_type_t;
 
 /**

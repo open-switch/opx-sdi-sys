@@ -24,6 +24,8 @@
  ***************************************************************************************/
 #include "sdi_resource_internal.h"
 #include "private/sdi_entity_internal.h"
+#include "private/sdi_bmc_db.h"
+#include "private/sdi_bmc_bus_api.h"
 #include "sdi_entity.h"
 #include "sdi_sys_common.h"
 #include "sdi_pin_bus_framework.h"
@@ -522,6 +524,7 @@ void sdi_register_entity(std_config_node_t node)
     char *fault_name = NULL;
     char alias[SDI_MAX_NAME_LEN] = {0};
     char *config_attr = NULL;
+    char *access_attr = NULL;
     uint_t instance = 0;
     sdi_entity_type_t entity_type;
     sdi_entity_hdl_t entity_hdl = NULL;
@@ -554,12 +557,24 @@ void sdi_register_entity(std_config_node_t node)
 
     entity_priv_hdl = (sdi_entity_priv_hdl_t) entity_hdl;
 
+    entity_priv_hdl->access_type = SDI_ENT_ACCESS_DIRECT;
+    access_attr = std_config_attr_get(node, "access_type");
+    if (access_attr != NULL) {
+        if (strcmp(access_attr, "BMC") == 0) {
+            entity_priv_hdl->access_type = SDI_ENT_ACCESS_BMC;
+        }
+    }
+
     presence_name = std_config_attr_get(node, "presence");
     STD_ASSERT(presence_name != NULL);
     if (strncmp(presence_name, SDI_STR_FIXED_SLOT, SDI_FIXED_SLOT_SIZE) != 0) {
            STD_BIT_SET(entity_priv_hdl->oper_support_flag, SDI_HOTSWAPPABLE);
-           entity_priv_hdl->pres_pin_hdl = sdi_get_pin_bus_handle_by_name(presence_name);
-           STD_ASSERT(entity_priv_hdl->pres_pin_hdl != NULL);
+           safestrncpy(entity_priv_hdl->pres_attr, presence_name,
+                   sizeof(entity_priv_hdl->pres_attr));
+           if (entity_priv_hdl->access_type != SDI_ENT_ACCESS_BMC) {
+               entity_priv_hdl->pres_pin_hdl = sdi_get_pin_bus_handle_by_name(presence_name);
+               STD_ASSERT(entity_priv_hdl->pres_pin_hdl != NULL);
+           }
     } else {
         /* if presence attribute is a FIXED_SLOT, consider it as FIXED Entity */
         STD_BIT_CLEAR(entity_priv_hdl->oper_support_flag, SDI_HOTSWAPPABLE);
@@ -573,8 +588,12 @@ void sdi_register_entity(std_config_node_t node)
 
     config_attr = std_config_attr_get(node, "power_output_status");
     if (config_attr != NULL) {
-        entity_priv_hdl->power_output_status_pin_hdl =
-                         sdi_get_pin_bus_handle_by_name(config_attr);
+        safestrncpy(entity_priv_hdl->power_output_status_attr, config_attr,
+                sizeof(entity_priv_hdl->power_output_status_attr));
+        if (entity_priv_hdl->access_type != SDI_ENT_ACCESS_BMC) {
+            entity_priv_hdl->power_output_status_pin_hdl =
+                sdi_get_pin_bus_handle_by_name(config_attr);
+        }
     }
 
     config_attr = std_config_attr_get(node, "gpr_register");
@@ -725,4 +744,37 @@ sdi_resource_hdl_t sdi_entity_get_next_resource(sdi_resource_hdl_t hdl,
 sdi_resource_type_t sdi_resource_type_get(sdi_resource_hdl_t hdl)
 {
     return sdi_internal_resource_type_get(hdl);
+}
+
+/**
+ * Dump entities and resources.
+ */
+
+
+void sdi_entity_resource_dump (void)
+{
+    sdi_entity_node_t *hdl = NULL;
+    sdi_entity_priv_hdl_t entity_hdl = NULL;
+    sdi_resource_priv_hdl_t resource_hdl = NULL;
+    std_dll_head *resource_head = NULL;
+    sdi_entity_resource_node_t *node = NULL;
+
+    fprintf(stdout, "Entity list:\n");
+    for (hdl = sdi_entity_find_first(); (hdl != NULL);
+            hdl = sdi_entity_find_next(hdl)) {
+        entity_hdl = (sdi_entity_priv_hdl_t)hdl->entity_hdl;
+        fprintf(stdout, "Name: %s \t type: %u \t instance: %u\n",
+                entity_hdl->name, entity_hdl->type, entity_hdl->instance);
+        resource_head = (std_dll_head *)entity_hdl->resource_list;
+        fprintf(stdout, "Entity resource list:\n");
+        for ((node=(sdi_entity_resource_node_t *)std_dll_getfirst(resource_head));
+                (node != NULL);
+                (node=(sdi_entity_resource_node_t *)std_dll_getnext(resource_head, (std_dll *)node))) {
+            resource_hdl = (sdi_resource_priv_hdl_t)node->hdl;
+            fprintf(stdout, "\t Name: %s \t type: %u \t alias: %s\n",
+                    resource_hdl->name, resource_hdl->type, resource_hdl->alias);
+
+        }
+    }
+    return;
 }

@@ -61,6 +61,10 @@
 #define SDI_COMM_DEV_SENSOR_TELEMETRY_SIZE                          34
 #define SDI_COMM_DEV_SENSOR_06_TELEMETRY                        0x7C7A    /* READ/WRITE */
 #define SDI_COMM_DEV_SENSOR_06_TELEMETRY_SIZE                        2
+#define SDI_COMM_DEV_SENSOR_07_TELEMETRY                        0x7C7C    /* READ/WRITE */
+#define SDI_COMM_DEV_SENSOR_07_TELEMETRY_SIZE                        2
+#define SDI_COMM_DEV_SENSOR_08_TELEMETRY                        0x7C7E    /* READ/WRITE */
+#define SDI_COMM_DEV_SENSOR_08_TELEMETRY_SIZE                        2
 #define SDI_COMM_DEV_VENDOR_INTELLIGENCE_MGMT_CONTROL           0X7C8E    /* READ/WRITE */
 #define SDI_COMM_DEV_VENDOR_INTELLIGENCE_MGMT_CONTROL_SIZE           2
 #define SDI_COMM_DEV_VENDOR_INTELLIGENCE_STATUS_REGISTER        0x7C90    /* READ/WRITE */

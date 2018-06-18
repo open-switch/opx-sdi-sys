@@ -89,6 +89,7 @@ t_std_error sdi_entity_info_data_get(void *resource_hdl,
 
     entity_info->max_speed = entity_info_data->max_fan_speed;
     entity_info->num_fans = entity_info_data->no_of_fans;
+    entity_info->air_flow = SDI_PWR_AIR_FLOW_NOT_APPLICABLE;
     
     /* Retrieve the pin group bus hdl for airflow direction */
     airflow_dir_hdl = entity_info_data->airflow_dir_hdl;
@@ -141,6 +142,16 @@ t_std_error sdi_entity_info_data_get(void *resource_hdl,
             result = false;
         }
     }
+
+     /*
+      * Mark the not-applicable fields in virtual entity_info as "NA"
+      */
+    safestrncpy(entity_info->prod_name, "NA", sizeof(entity_info->prod_name));
+    safestrncpy(entity_info->ppid, "NA", sizeof(entity_info->ppid));
+    safestrncpy(entity_info->hw_revision, "NA", sizeof(entity_info->hw_revision));
+    safestrncpy(entity_info->platform_name, "NA", sizeof(entity_info->platform_name));
+    safestrncpy(entity_info->vendor_name, "NA", sizeof(entity_info->vendor_name)); 
+    safestrncpy(entity_info->part_number, "NA", sizeof(entity_info->part_number));
 
     if (false == result) {
         return SDI_DEVICE_ERRNO;

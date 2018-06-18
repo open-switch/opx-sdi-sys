@@ -77,6 +77,15 @@ noinst_HEADERS = \
         opx/private/sdi_register_eeprom_api.h \
         opx/private/sdi_register_fantray_api.h \
         opx/private/util.h \
+	opx/private/sdi_bmc.h \
+	opx/private/sdi_bmc_bus_api.h \
+	opx/private/sdi_bmc_db.h \
+	opx/private/sdi_bmc_internal.h \
+	opx/private/sdi_bmc_io_bus.h \
+	opx/private/sdi_fpga_pci.h \
+	opx/private/sdi_fpga_pci_bus.h \
+	opx/private/sdi_fpga_pci_bus_api.h \
+	opx/private/sdi_fpga_pci_bus_attr.h \
         opx/unittest/sdi_unit_test.h
 
 # Headers for API (will be included in -dev package)

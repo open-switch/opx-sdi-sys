@@ -159,6 +159,13 @@ static sdi_sfp_reg_info_t threshold_reg_info[] = {
 
 static sdi_i2c_addr_t sfp_i2c_addr = { .i2c_addr = SFP_DIAG_MNTR_I2C_ADDR, .addr_mode_16bit = 0};
 
+float sdi_convert_mw_to_dbm(float power_mw)
+{
+    return (power_mw == 0.00000)
+          ? (SDI_SFP_ZERO_WATT_POWER_IN_DBM)
+          : (10.00000 * log10f(power_mw));
+}
+
 /* This function enables the particular device on a bus */
 static inline t_std_error sdi_sfp_module_select(sdi_device_hdl_t sfp_device)
 {
@@ -413,6 +420,7 @@ static inline float convert_sfp_volt(uint8_t *buf, sfp_calib_info_t *calib_info)
  *                    Rx_PWR(1) * Rx_PWRAD (16 bit unsigned integer) +
  *                    Rx_PWR(0)
  * The result is in units of 0.1uW yielding a total range of 0 – 6.5mW.
+ * The final result then gets converted to dbm. A value of 0mW yields SDI_SFP_ZERO_WATT_POWER_IN_DBM 
  * */
 static inline float convert_sfp_rx_power(uint8_t *buf, sfp_rx_power_calib_info_t *calib_info)
 {
@@ -430,7 +438,7 @@ static inline float convert_sfp_rx_power(uint8_t *buf, sfp_rx_power_calib_info_t
                            (((float)(*(calib_info->rx_power_const_1))) * ((float)rx_power)) +
                            ((float)(*calib_info->rx_power_const_0)) );
     }
-    return calib_rx_power;
+    return sdi_convert_mw_to_dbm(calib_rx_power);
 }
 
 /* This function converts temperature raw data to human readable format based on
@@ -446,6 +454,7 @@ static inline float convert_sfp_rx_power(uint8_t *buf, sfp_rx_power_calib_info_t
  * output power, TX_PWR, is given in uW by the following equation:
  *      TX_PWR (uW) = TX_PWRSLOPE * TX_PWRAD  +  TX_PWROFFSET.
  * This result is in units of 0.1uW yielding a total range of 0 – 6.5mW.
+ * The final result then gets converted to dbm. A value of 0mW yields SDI_SFP_ZERO_WATT_POWER_IN_DBM
  * */
 static inline float convert_sfp_tx_power(uint8_t *buf, sfp_calib_info_t *calib_info)
 {
@@ -463,7 +472,7 @@ static inline float convert_sfp_tx_power(uint8_t *buf, sfp_calib_info_t *calib_i
         /* Result is in units of 0.1uW. converting to mW */
         calib_tx_pwr = ( ((slope * tx_pwr) + calib_info->offset) / (10000.0) );
     }
-    return calib_tx_pwr;
+    return  sdi_convert_mw_to_dbm(calib_tx_pwr);
 }
 
 /* This function converts temperature raw data to human readable format based on
@@ -2324,4 +2333,11 @@ t_std_error sdi_sfp_wavelength_set (sdi_resource_hdl_t resource_hdl, float value
     sdi_sfp_module_deselect(sfp_priv_data);
 
     return rc;
+}
+
+t_std_error sdi_sfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
+                                   sdi_qsa_adapter_type_t* qsa_adapter) {
+
+    *qsa_adapter = SDI_QSA_ADAPTER_NONE;
+    return STD_ERR_OK;;
 }

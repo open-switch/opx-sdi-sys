@@ -232,6 +232,12 @@ static t_std_error sdi_eeprom_register(std_config_node_t node, void *bus_handle,
     attr_value = std_config_attr_get(node, SDI_DEV_ATTR_ADDRESS);
     STD_ASSERT(attr_value != NULL);
     chip->addr.i2c_addr.i2c_addr = (i2c_addr_t) strtoul(attr_value, NULL, 16);
+    attr_value = std_config_attr_get(node, SDI_DEV_ATTR_16BIT_ADDR_MODE);
+    if (attr_value != NULL) {
+        if (strcmp(attr_value, SDI_DEV_ATTR_ENABLED) == 0) {
+            chip->addr.i2c_addr.addr_mode_16bit = 1;
+        }
+    }
 
     attr_value = std_config_attr_get(node, SDI_DEV_ATTR_ALIAS);
     if (attr_value == NULL) {

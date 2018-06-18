@@ -32,6 +32,7 @@
 #include "std_llist.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 static std_dll_head resource_list;
 
@@ -122,6 +123,24 @@ sdi_resource_hdl_t sdi_find_resource_by_name(const char *name)
         node=(sdi_resource_node_t *)std_dll_getnext(&resource_list, (std_dll *)node);
     }
     return NULL;
+}
+/**
+ * sdi_dump_resources can be used for debugging purpose to list all the
+ * resources in the systsem.
+ */
+void sdi_dump_resources (void)
+{
+    sdi_resource_node_t *node = NULL;
+    node = (sdi_resource_node_t *)std_dll_getfirst(&resource_list);
+    while(node)
+    {
+        sdi_resource_priv_hdl_t res_hdl = (sdi_resource_priv_hdl_t)(node->resource_hdl);
+        fprintf(stdout, "\nName : %s, type = %d, fns(%p), hdl(%p), alias: %s\n",
+                res_hdl->name, res_hdl->type, res_hdl->callback_fns, res_hdl->callback_hdl,
+                res_hdl->alias);
+        node=(sdi_resource_node_t *)std_dll_getnext(&resource_list, (std_dll *)node);
+    }
+    return;
 }
 
 /**

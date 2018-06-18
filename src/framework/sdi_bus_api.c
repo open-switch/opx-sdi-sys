@@ -30,6 +30,8 @@
 #include "sdi_i2c_bus_api.h"
 #include "sdi_io_port_api.h"
 #include "sdi_smartfusion_io_bus_api.h"
+#include "sdi_fpga_pci.h"
+#include "sdi_fpga_pci_bus_api.h"
 
 /*
  * Read a byte of data from a specified offset of a device using bus api.
@@ -66,6 +68,14 @@ t_std_error sdi_bus_read_byte(sdi_bus_hdl_t bus_hdl, sdi_device_addr_t addr,
              break;
         case SDI_SF_IO_BUS:
              rc = sdi_sf_io_bus_read_byte((sdi_sf_io_bus_hdl_t)bus_hdl, offset, buffer);
+             if (rc != STD_ERR_OK) {
+                 SDI_ERRMSG_LOG("%s:%d Read byte of %s Type %d Port Addr 0x%x "
+                                "failed with error %d", __FUNCTION__, __LINE__,
+                                 bus_hdl->bus_name, bus_hdl->bus_type, offset, rc);
+             }
+             break;
+        case SDI_FPGA_PCI_BUS:
+             rc = sdi_fpga_pci_bus_read_byte((sdi_fpga_pci_bus_hdl_t)bus_hdl, offset, buffer);
              if (rc != STD_ERR_OK) {
                  SDI_ERRMSG_LOG("%s:%d Read byte of %s Type %d Port Addr 0x%x "
                                 "failed with error %d", __FUNCTION__, __LINE__,
@@ -115,6 +125,14 @@ t_std_error sdi_bus_write_byte(sdi_bus_hdl_t bus_hdl, sdi_device_addr_t addr,
              break;
         case SDI_SF_IO_BUS:
              rc = sdi_sf_io_bus_write_byte((sdi_sf_io_bus_hdl_t)bus_hdl, offset, buffer);
+             if (rc != STD_ERR_OK) {
+                 SDI_ERRMSG_LOG("%s:%d Write byte of %s Type %d Port Addr 0x%x val"
+                                " %d failed with error %d", __FUNCTION__, __LINE__,
+                                 bus_hdl->bus_name, bus_hdl->bus_type, offset, rc);
+             }
+             break;
+        case SDI_FPGA_PCI_BUS:
+             rc = sdi_fpga_pci_bus_write_byte((sdi_fpga_pci_bus_hdl_t)bus_hdl, offset, buffer);
              if (rc != STD_ERR_OK) {
                  SDI_ERRMSG_LOG("%s:%d Write byte of %s Type %d Port Addr 0x%x val"
                                 " %d failed with error %d", __FUNCTION__, __LINE__,

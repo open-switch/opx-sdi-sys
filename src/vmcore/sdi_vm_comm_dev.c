@@ -59,6 +59,18 @@ t_std_error sdi_comm_dev_host_temperature_set(sdi_resource_hdl_t resource_hdl, i
     return STD_ERR_OK;
 }
 
+/* SDI COMM DEV - Write temperature reading from Host System */
+t_std_error sdi_comm_dev_host_npu_temperature_set(sdi_resource_hdl_t resource_hdl, int temp)
+{
+    return STD_ERR_OK;
+}
+
+/* SDI COMM DEV - Write temperature reading from Host System */
+t_std_error sdi_comm_dev_host_ambient_temperature_set(sdi_resource_hdl_t resource_hdl, int temp)
+{
+    return STD_ERR_OK;
+}
+
 /* SDI COMM DEV - Read comm Message presence status */
 t_std_error sdi_comm_dev_is_msg_present(sdi_resource_hdl_t resource_hdl, bool *presence)
 {

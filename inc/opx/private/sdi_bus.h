@@ -78,6 +78,14 @@ typedef enum {
      */
     SDI_SF_IO_BUS,
     /**
+     * SDI BMC IO Bus
+     */
+    SDI_BMC_IO_BUS,
+    /**
+     * SDI FPGA PCI Bus
+     */
+    SDI_FPGA_PCI_BUS,
+    /**
      * SDI MAX Bus.It must be at last
      */
     SDI_MAX_BUS

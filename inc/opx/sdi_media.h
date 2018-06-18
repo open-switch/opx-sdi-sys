@@ -273,6 +273,17 @@ extern "C" {
  */
 
 
+/**
+ * @enum sdi_qsa_adapter_type_t
+ * QSA adapter type
+ */
+typedef enum {
+
+    SDI_QSA_ADAPTER_NONE,
+    SDI_QSA_ADAPTER_UNKNOWN,
+    SDI_QSA_ADAPTER_QSA,
+    SDI_QSA_ADAPTER_QSA28
+} sdi_qsa_adapter_type_t;
 
 /**
  * @enum sdi_media_page_t
@@ -1515,6 +1526,15 @@ t_std_error sdi_media_ext_rate_select (sdi_resource_hdl_t resource_hdl, uint_t c
  */
 
 t_std_error sdi_media_wavelength_set (sdi_resource_hdl_t resource_hdl, float value);
+
+/*
+ * @brief Set wavelength for tunable media
+ * @param[in]  - resource_hdl - handle to the front panel port
+ * @param[in]  - wavelength value
+ */
+t_std_error sdi_media_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
+                                   sdi_qsa_adapter_type_t* qsa_adapter);
+
 
 /**
  * @}
