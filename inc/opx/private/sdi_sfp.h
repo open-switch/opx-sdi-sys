@@ -83,6 +83,8 @@ typedef struct sfp_device {
     sdi_media_led_t port_led;
     /** Front panel port or media capability */
     sdi_media_speed_t  capability;
+
+    sdi_media_port_info_t port_info;
 } sfp_device_t;
 
 /**
@@ -451,5 +453,25 @@ t_std_error sdi_sfp_phy_serdes_control (sdi_resource_hdl_t resource_hdl, uint_t 
 
 t_std_error sdi_sfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
                                    sdi_qsa_adapter_type_t* qsa_adapter);
+
+/**
+ * @brief API to get the info of the port in which the device is connected
+ * resource_hdl[in] - Handle of the resource
+ * sdi_media_port_info_t*[out] - port info type obtained
+ * return           - t_std_error
+ */
+
+t_std_error sdi_sfp_port_info_get (sdi_resource_hdl_t resource_hdl,
+                                 sdi_media_port_info_t* port_info);
+
+/**
+ * @brief API to get the module
+ * resource_hdl[in] - Handle of the resource
+ * sdi_media_module_info_t*[out] - module info
+ * return           - t_std_error
+ */
+
+t_std_error sdi_sfp_module_info_get (sdi_resource_hdl_t resource_hdl,
+                                 sdi_media_module_info_t* module_info);
 
 #endif

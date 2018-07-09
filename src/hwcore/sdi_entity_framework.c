@@ -169,6 +169,27 @@ sdi_entity_hdl_t sdi_entity_lookup(sdi_entity_type_t etype, uint_t instance)
     }
     return NULL;
 }
+
+/* Check if the resource is valid for this entity, i.e. it has no entity PPID
+   specified, or it's entity PPID matches the parent's PPID.
+ */
+static bool resource_entity_ppid_match(sdi_resource_priv_hdl_t hdl)
+{
+    sdi_entity_priv_hdl_t entity_hdl = hdl->parent;
+
+    return (!hdl->entity_ppid_regexp_valid
+            || (entity_hdl->entity_info_valid
+                && regexec(hdl->entity_ppid_regexp,
+                           entity_hdl->entity_info.ppid,
+                           0,
+                           0,
+                           0
+                           )
+                == 0
+                )
+            );
+}
+
 /**
  * Retrieve number of resources of given type within given entity.
  * hdl[in] - handle to the entity whose information has to be retrieved.
@@ -194,8 +215,10 @@ uint_t sdi_entity_resource_count_get(sdi_entity_hdl_t hdl, sdi_resource_type_t r
          (node != NULL);
          (node=(sdi_entity_resource_node_t *)std_dll_getnext(resource_head, (std_dll *)node)))
     {
-        resource_hdl = (sdi_resource_priv_hdl_t)node->hdl;
-        if(resource_hdl->type == resource_type)
+        resource_hdl = (sdi_resource_priv_hdl_t) node->hdl;
+        if(resource_entity_ppid_match(resource_hdl)
+           && resource_hdl->type == resource_type
+           )
         {
             resource_count++;
         }
@@ -230,7 +253,9 @@ sdi_resource_hdl_t sdi_entity_resource_lookup(sdi_entity_hdl_t hdl,
          (node=(sdi_entity_resource_node_t *)std_dll_getnext(resource_head, (std_dll *)node)))
     {
         resource_hdl = (sdi_resource_priv_hdl_t)node->hdl;
-        if (strncmp(resource_hdl->alias, alias, SDI_MAX_NAME_LEN) == 0)
+        if (resource_entity_ppid_match(resource_hdl)
+            && strncmp(resource_hdl->alias, alias, SDI_MAX_NAME_LEN) == 0
+            )
         {
             return node->hdl;
         }
@@ -272,7 +297,11 @@ void sdi_entity_for_each_resource(sdi_entity_hdl_t hdl,
      (node);
      (node=(sdi_entity_resource_node_t *)std_dll_getnext(resource_head, (std_dll *)node)))
     {
-        (*fn)(node->hdl, user_data);
+        sdi_resource_hdl_t resource_hdl = node->hdl;
+        if (!resource_entity_ppid_match(
+                 (sdi_resource_priv_hdl_t) resource_hdl)
+            )  continue;
+        (*fn)(resource_hdl, user_data);
     }
 }
 
@@ -350,6 +379,8 @@ void sdi_entity_add_resource(sdi_entity_hdl_t ehdl, sdi_resource_hdl_t resource,
             sizeof(((sdi_resource_priv_hdl_t)resource)->alias));
     newnode->hdl = resource;
     std_dll_insertatback(((sdi_entity_priv_hdl_t)ehdl)->resource_list, (std_dll *)newnode);
+
+    ((sdi_resource_priv_hdl_t) resource)->parent = (sdi_entity_priv_hdl_t) ehdl;
 }
 
 
@@ -431,6 +462,18 @@ static void sdi_entity_register_resources(std_config_node_t node, sdi_entity_hdl
         if (sdi_resource_type_get(res_hdl) == SDI_RESOURCE_ENTITY_INFO) {
             ((sdi_entity_priv_hdl_t)entity_hdl)->entity_info_hdl = res_hdl;
         }
+
+        char *ppid = std_config_attr_get(resource, "ppid");
+        if (ppid != 0) {
+            sdi_resource_priv_hdl_t rh = (sdi_resource_priv_hdl_t) res_hdl;
+            if (regcomp(rh->entity_ppid_regexp, ppid, REG_EXTENDED | REG_NOSUB) != 0) {
+                SDI_ERRMSG_LOG("Invalid pattern for resource %s entity ppid\n", resource_name);
+                continue;
+            }
+            
+            rh->entity_ppid_regexp_valid = true;
+        }
+
         sdi_entity_add_resource(entity_hdl, res_hdl, resource_name);
     }
 }
@@ -678,7 +721,7 @@ t_std_error sdi_entity_init(sdi_entity_hdl_t hdl)
         if (rc == STD_ERR_OK) {
             memcpy(&entity_hdl->entity_info, entity_info, sizeof(sdi_entity_info_t));
         } else {
-            SDI_ERRMSG_LOG("entity_info read failed.rc=%d \n", rc);
+            SDI_TRACEMSG_LOG("entity_info read failed.rc=%d \n", rc);
         }
     }
     /* Initialise each resources in the entity */

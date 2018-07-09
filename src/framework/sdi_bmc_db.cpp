@@ -32,6 +32,8 @@ typedef std::pair<sdi_data_map_t::iterator,bool> sdi_data_return_t;
 
 static sdi_data_map_t entity_map;
 static sdi_data_map_t sensor_map;
+static std_mutex_lock_create_static_init_fast(_ipmi_entity_lock);
+static std_mutex_lock_create_static_init_fast(_ipmi_sensor_lock);
 
 /**
  * Insert data record into a specified map
@@ -100,9 +102,13 @@ sdi_bmc_entity_t *sdi_bmc_db_entity_add (uint32_t id, uint32_t instance)
     sdi_bmc_entity_t  *ent = NULL;
 
     sdi_bmc_entity_key(key, sizeof(key), id, instance);
+    std_mutex_lock(&_ipmi_entity_lock);
     if ((ent = (sdi_bmc_entity_t *)sdi_data_get(entity_map, key)) == NULL) {
         ent = (sdi_bmc_entity_t *) calloc(1, sizeof(sdi_bmc_entity_t));
-        if (ent == NULL) return NULL;
+        if (ent == NULL) {
+            std_mutex_unlock(&_ipmi_entity_lock);
+            return NULL;
+        }
         ent->entity_id = id;
         ent->entity_instance = instance;
         ent->present = false;
@@ -112,6 +118,7 @@ sdi_bmc_entity_t *sdi_bmc_db_entity_add (uint32_t id, uint32_t instance)
             ent = NULL;
         }
     }
+    std_mutex_unlock(&_ipmi_entity_lock);
     return ent;
 }
 
@@ -125,7 +132,9 @@ sdi_bmc_entity_t *sdi_bmc_db_entity_get (uint32_t id, uint32_t instance)
     sdi_bmc_entity_t  *ent = NULL;
 
     sdi_bmc_entity_key(key, sizeof(key), id, instance);
+    std_mutex_lock(&_ipmi_entity_lock);
     ent = (sdi_bmc_entity_t *) sdi_data_get(entity_map, key);
+    std_mutex_unlock(&_ipmi_entity_lock);
     return ent;
 }
 
@@ -139,8 +148,12 @@ bool sdi_bmc_db_entity_remove (uint32_t id, uint32_t instance)
     sdi_bmc_entity_t  *ent = NULL;
 
     sdi_bmc_entity_key(key, sizeof(key), id, instance);
+    std_mutex_lock(&_ipmi_entity_lock);
     ent = (sdi_bmc_entity_t *) sdi_data_remove(entity_map, key);
-    free(ent);
+    std_mutex_unlock(&_ipmi_entity_lock);
+    if (ent != NULL) {
+        free(ent);
+    }
     return true;
 }
 
@@ -154,12 +167,14 @@ void sdi_bmc_db_for_each_entity (sdi_bmc_register_entity_t callback_fn)
     sdi_data_map_t::iterator it;
 
     if (callback_fn == NULL) return;
+    std_mutex_lock(&_ipmi_entity_lock);
     for (it = entity_map.begin(); it != entity_map.end(); ++it) {
         sdi_bmc_entity_t  *ent = (sdi_bmc_entity_t *) it->second;
         if (ent->present == true) {
             callback_fn(ent);
         }
     }
+    std_mutex_unlock(&_ipmi_entity_lock);
     return;
 }
 
@@ -170,6 +185,7 @@ void sdi_bmc_db_for_each_entity (sdi_bmc_register_entity_t callback_fn)
 void sdi_bmc_db_entity_cleanup(void)
 {
     sdi_data_map_t::iterator it;
+    std_mutex_lock(&_ipmi_entity_lock);
     for (it = entity_map.begin(); it != entity_map.end(); ++it) {
         sdi_bmc_entity_t  *ent = (sdi_bmc_entity_t *) it->second;
         if (ent != NULL) {
@@ -178,6 +194,7 @@ void sdi_bmc_db_entity_cleanup(void)
         }
     }
     entity_map.clear();
+    std_mutex_unlock(&_ipmi_entity_lock);
 }
 
 /**
@@ -205,6 +222,19 @@ static inline const char *sdi_bmc_sensor_key (char *key, uint32_t len, uint32_t 
     return ((const char *) key);
 }
 
+static inline const char *sdi_bmc_sensor_key_by_name (char *key, uint32_t len, char *name)
+{
+    char  *sub_key = NULL;
+    sub_key = strchr(name, '.');
+
+    if (sub_key != NULL) {
+        snprintf(key, len, "sensor%s.%s", sub_key, name);
+    } else {
+        snprintf(key, len, "sensor.%s", name);
+    }
+    return ((const char *) key);
+}
+
 /**
  * Add sensor record to a sensor database using entity id, instance and sensor Id.
  */
@@ -215,9 +245,13 @@ sdi_bmc_sensor_t *sdi_bmc_db_sensor_add (uint32_t id, uint32_t instance, char *n
     sdi_bmc_sensor_t  *sensor = NULL;
 
     sdi_bmc_sensor_key(key, sizeof(key), id, instance, name);
+    std_mutex_lock(&_ipmi_sensor_lock);
     if ((sensor = (sdi_bmc_sensor_t *) sdi_data_get(sensor_map, key)) == NULL) {
         sensor = (sdi_bmc_sensor_t *) calloc(1, sizeof(sdi_bmc_sensor_t));
-        if (sensor == NULL) return NULL;
+        if (sensor == NULL) {
+            std_mutex_unlock(&_ipmi_sensor_lock);
+            return NULL;
+        }
         sensor->entity_id = id;
         sensor->entity_instance = instance;
         safestrncpy(sensor->name, name, IPMI_MAX_NAME_LEN);
@@ -227,9 +261,34 @@ sdi_bmc_sensor_t *sdi_bmc_db_sensor_add (uint32_t id, uint32_t instance, char *n
             sensor = NULL;
         }
     }
+    std_mutex_unlock(&_ipmi_sensor_lock);
     return sensor;
 }
 
+sdi_bmc_sensor_t *sdi_bmc_db_sensor_add_by_name (char *name)
+{
+    char key[SDI_DB_KEY_LEN] = "";
+    sdi_bmc_sensor_t  *sensor = NULL;
+
+    sdi_bmc_sensor_key_by_name(key, sizeof(key), name);
+
+    std_mutex_lock(&_ipmi_sensor_lock);
+    if ((sensor = (sdi_bmc_sensor_t *) sdi_data_get(sensor_map, key)) == NULL) {
+        sensor = (sdi_bmc_sensor_t *) calloc(1, sizeof(sdi_bmc_sensor_t));
+        if (sensor == NULL) {
+            std_mutex_unlock(&_ipmi_sensor_lock);
+            return NULL;
+        }
+        safestrncpy(sensor->name, name, IPMI_MAX_NAME_LEN);
+        if (sdi_data_insert(sensor_map, key, sensor) == false) {
+            SDI_ERRMSG_LOG("Adding sensor in DB failed(%s)", name);
+            free(sensor);
+            sensor = NULL;
+        }
+    }
+    std_mutex_unlock(&_ipmi_sensor_lock);
+    return sensor;
+}
 /**
  * Fetch sensor record from a sensor database using entity id, instance and sensor Id.
  */
@@ -240,7 +299,9 @@ sdi_bmc_sensor_t *sdi_bmc_db_sensor_get (uint32_t id, uint32_t instance, char *n
     sdi_bmc_sensor_t  *sensor = NULL;
 
     sdi_bmc_sensor_key(key, sizeof(key), id, instance, name);
+    std_mutex_lock(&_ipmi_sensor_lock);
     sensor = (sdi_bmc_sensor_t *) sdi_data_get(sensor_map, key);
+    std_mutex_unlock(&_ipmi_sensor_lock);
     return sensor;
 }
 
@@ -253,6 +314,7 @@ sdi_bmc_sensor_t *sdi_bmc_db_sensor_get_by_name (char *name)
     sdi_data_map_t::iterator it;
     sdi_bmc_sensor_t *ret = NULL;
 
+    std_mutex_lock(&_ipmi_sensor_lock);
     for (it = sensor_map.begin(); it != sensor_map.end(); ++it) {
         sdi_bmc_sensor_t *sensor = (sdi_bmc_sensor_t *) it->second;
         if (strcmp(sensor->name, name) == 0) {
@@ -260,6 +322,7 @@ sdi_bmc_sensor_t *sdi_bmc_db_sensor_get_by_name (char *name)
             break;
         }
     }
+    std_mutex_unlock(&_ipmi_sensor_lock);
     return ret;
 }
 
@@ -273,17 +336,22 @@ bool sdi_bmc_db_sensor_remove (uint32_t id, uint32_t instance, char *name)
     sdi_bmc_sensor_t  *sensor = NULL;
 
     sdi_bmc_sensor_key(key, sizeof(key), id, instance, name);
-    sensor = (sdi_bmc_sensor_t *) sdi_data_remove(sensor_map, key);
 
-    if (sensor->ev_state != NULL) {
-        free(sensor->ev_state);
-        sensor->ev_state = NULL;
+    std_mutex_lock(&_ipmi_sensor_lock);
+    sensor = (sdi_bmc_sensor_t *) sdi_data_remove(sensor_map, key);
+    std_mutex_unlock(&_ipmi_sensor_lock);
+
+    if (sensor != NULL) {
+        if (sensor->ev_state != NULL) {
+            free(sensor->ev_state);
+            sensor->ev_state = NULL;
+        }
+        if (sensor->thresholds != NULL) {
+            free(sensor->thresholds);
+            sensor->thresholds = NULL;
+        }
+     free(sensor);
     }
-    if (sensor->thresholds != NULL) {
-        free(sensor->thresholds);
-        sensor->thresholds = NULL;
-    }
-    free(sensor);
     return true;
 }
 
@@ -299,6 +367,7 @@ void sdi_bmc_db_for_each_sensor (uint32_t entity_id, uint32_t instance,
 
     if (callback_fn == NULL) return;
 
+    std_mutex_lock(&_ipmi_sensor_lock);
     for (it = sensor_map.begin(); it != sensor_map.end(); ++it) {
         sdi_bmc_sensor_t *sensor = (sdi_bmc_sensor_t *) it->second;
         if ((sensor->entity_id == entity_id)
@@ -306,6 +375,7 @@ void sdi_bmc_db_for_each_sensor (uint32_t entity_id, uint32_t instance,
             callback_fn(sensor, data);
         }
     }
+    std_mutex_unlock(&_ipmi_sensor_lock);
     return;
 }
 
@@ -316,6 +386,7 @@ void sdi_bmc_db_for_each_sensor (uint32_t entity_id, uint32_t instance,
 void sdi_bmc_db_sensor_cleanup(void)
 {
     sdi_data_map_t::iterator it;
+    std_mutex_lock(&_ipmi_sensor_lock);
     for (it = sensor_map.begin(); it != sensor_map.end(); ++it) {
         sdi_bmc_sensor_t  *sensor = (sdi_bmc_sensor_t *) it->second;
         if (sensor != NULL) {
@@ -332,6 +403,7 @@ void sdi_bmc_db_sensor_cleanup(void)
         }
     }
     sensor_map.clear();
+    std_mutex_unlock(&_ipmi_sensor_lock);
 }
 
 /**
@@ -345,7 +417,7 @@ void sdi_bmc_db_sensor_dump (void)
 
     for (it = sensor_map.begin(); it != sensor_map.end(); ++it) {
         sdi_bmc_sensor_t  *sensor = (sdi_bmc_sensor_t *) it->second;
-        std::cout << it->first << "==>" << sensor->entity_id << "." << sensor->entity_instance << "sensor name :" 
+        std::cout << it->first << "==>" << it->second << sensor->entity_id << "." << sensor->entity_instance << "sensor name :" 
             << sensor->name << " type :" <<  sensor->type;
 
         if ((sensor->reading_type == SDI_SDR_READING_THRESHOLD)

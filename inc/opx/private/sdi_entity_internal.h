@@ -82,6 +82,8 @@ struct sdi_entity {
     sdi_resource_hdl_t entity_info_hdl; /**entity_info handler of an entity */
     sdi_entity_info_t entity_info; /**<entity_info of an entity */
     std_dll_head *resource_list;/**<list of resources that are part of this entity*/
+    bool present;
+    bool entity_info_valid;
 }sdi_entity_t;
 
 /**

@@ -24,12 +24,12 @@
  *         Currently entity_info providing support for read operations.
 ***************************************************************************************/
 
-#include "sdi_resource_internal.h"
-#include "sdi_sys_common.h"
-#include "std_assert.h"
-#include "sdi_entity_info_internal.h"
 #include <string.h>
 
+#include "private/sdi_resource_internal.h"
+#include "sdi_sys_common.h"
+#include "std_assert.h"
+#include "private/sdi_entity_info_internal.h"
 
 /**
  * brief - Read the entity info.
@@ -42,24 +42,10 @@
 t_std_error sdi_entity_info_read(sdi_resource_hdl_t resource_hdl,
                                  sdi_entity_info_t *entity_info)
 {
-    t_std_error rc = STD_ERR_OK;
-    sdi_resource_priv_hdl_t entity_info_hdl = (sdi_resource_priv_hdl_t)resource_hdl;
+    sdi_entity_priv_hdl_t entity_priv_hdl = ((sdi_resource_priv_hdl_t) resource_hdl)->parent;
+    if (!entity_priv_hdl->entity_info_valid)  return (SDI_ERRCODE(ENODATA));
 
-    /* Validate arguments */
-    STD_ASSERT(entity_info != NULL);
-    STD_ASSERT(entity_info_hdl != NULL);
-
-    if(sdi_resource_type_get(resource_hdl) != SDI_RESOURCE_ENTITY_INFO) {
-        return(SDI_ERRCODE(EPERM));
-    }
-
-    memset(entity_info, 0, sizeof(sdi_entity_info_t));
-    rc = ((entity_info_t *)entity_info_hdl->callback_fns)->entity_info_data_get(
-                           entity_info_hdl->callback_hdl, entity_info);
-    if(rc != STD_ERR_OK) {
-        SDI_ERRMSG_LOG("Failed to get the entity content of %s ",
-                       entity_info_hdl->name);
-    }
-
-    return rc;
+    memcpy(entity_info, &entity_priv_hdl->entity_info, sizeof(*entity_info));
+    
+    return (STD_ERR_OK);
 }

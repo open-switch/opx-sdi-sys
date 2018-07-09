@@ -33,6 +33,7 @@
 #include "std_config_node.h"
 #include "sdi_resource_internal.h"
 #include "sdi_driver_internal.h"
+#include "sdi_fan_internal.h"
 #include "sdi_i2c.h"
 
 /**
@@ -135,6 +136,7 @@ typedef struct sdi_pmbus_dev_ {
     uint_t pec_req; /**<SMBUS PEC support requirement of the device*/
     sdi_pmbus_sensor_t *sdi_pmbus_sensors; /**<sensor definition of the device*/
     void *private_data;/**<Device private data*/
+    struct sdi_fan_speed_ppid_map *fan_speed_map; /* Fan speed RPM-to-% mapping, if any */
 }sdi_pmbus_dev_t;
 
 typedef struct sdi_pmbus_resource_hdl_ {

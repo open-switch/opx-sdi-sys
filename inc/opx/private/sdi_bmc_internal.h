@@ -41,6 +41,12 @@
 #define SDI_BMC_DEV_ATTR_DATA           "data_sdr_id"
 #define SDI_BMC_DEV_ATTR_STATUS         "status_sdr_id"
 
+#define SDI_BMC_INT_USE_ELM_OFFSET      "int_use_elm_offset"
+#define SDI_BMC_AIRFLOW_OFFSET          "airflow_offset"
+#define SDI_BMC_PSU_TYPE_OFFSET         "psu_type_offset"
+
+#define SDI_BMC_MAX_INT_USE_AREA        (256)
+#define SDI_BMC_INVALID_OFFSET          (0xFFFFFFFF)
 /*
  * BMC entity info offsets.
  */
@@ -89,6 +95,7 @@ typedef struct sdi_bmc_reading_s {
 } sdi_bmc_reading_t;
 
 typedef struct sdi_bmc_entity_info_s {
+    bool     valid;
     char     board_manufacturer[SDI_MAX_NAME_LEN]; /* Manufature name */
     char     board_product_name[SDI_MAX_NAME_LEN]; /* Product name */
     char     board_serial_number[SDI_PPID_LEN];   /* board serial number is complete PPID of fantray and partial PPID of PSU's*/
@@ -150,6 +157,9 @@ typedef struct sdi_bmc_dev_resource_info_s {
     sdi_bmc_sensor_t    *data_sdr; /** Data sensor record */
     char                status_sdr_id[SDI_MAX_NAME_LEN]; /** Status sensor Id */
     sdi_bmc_sensor_t    *status_sdr; /** Status sensor record */
+    uint32_t            int_use_elm_offset; /* Internal use area element offset */
+    uint32_t            airflow_offset; /* Airflow data offset in element data */
+    uint32_t            psu_type_offset; /* PSU type data offset in element data */
     uint32_t            fan_count;   /** Number fans present in this entity */
     uint32_t            max_fan_speed /** Max fan speed */;
     sdi_device_hdl_t    dev_hdl;  /** Device handle */
@@ -172,6 +182,12 @@ typedef struct sdi_bmc_dev_s {
     char                alias[SDI_MAX_NAME_LEN]; /** BMC device alias */
     sdi_bmc_dev_list_t  *dev_list; /** Device list */
 } sdi_bmc_dev_t;
+
+/*
+ *
+ */
+
+sdi_bmc_dev_resource_info_t * sdi_bmc_dev_get_by_data_sdr (sdi_device_hdl_t dev_hdl, char *sdr_id);
 
 /**
  * BMC FAN device registration function.

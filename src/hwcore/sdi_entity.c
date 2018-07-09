@@ -22,8 +22,12 @@
 /**************************************************************************************
  * Implementation of generic entity  and resource API.
  ***************************************************************************************/
+
+#include <string.h>
+
 #include "sdi_entity.h"
 #include "sdi_entity_info.h"
+#include "sdi_entity_info_internal.h"
 #include "sdi_fan.h"
 #include "sdi_sys_common.h"
 #include "sdi_pin_bus_api.h"
@@ -33,6 +37,33 @@
 #include "private/sdi_bmc_bus_api.h"
 #include "std_assert.h"
 #include "std_bit_ops.h"
+
+/* Action to take when an entity is inserted */
+static t_std_error sdi_entity_inserted(sdi_entity_priv_hdl_t entity_priv_hdl)
+{
+    /* Read entity info EEPROM, cache contents */
+    memset(&entity_priv_hdl->entity_info, 0, sizeof(entity_priv_hdl->entity_info));
+    sdi_resource_priv_hdl_t entity_info_hdl = entity_priv_hdl->entity_info_hdl;
+    t_std_error rc = ((entity_info_t *) entity_info_hdl->callback_fns)->entity_info_data_get(
+                                            entity_info_hdl->callback_hdl, &entity_priv_hdl->entity_info);
+    if (rc == STD_ERR_OK) {
+        entity_priv_hdl->entity_info_valid = true;
+    } else {
+        SDI_TRACEMSG_LOG("Failed to get the entity content of %s ",
+                       entity_info_hdl->name);
+    }
+
+    return rc;
+}
+
+/* Action to take when an entity is removed */
+static t_std_error sdi_entity_removed(sdi_entity_priv_hdl_t entity_priv_hdl)
+{
+    /* Mark entity info cache as invalid */
+    entity_priv_hdl->entity_info_valid = false;
+
+    return (STD_ERR_OK);
+}
 
 /**
  * Retrieve presence status of given entity.
@@ -67,7 +98,6 @@ t_std_error sdi_entity_presence_get(sdi_entity_hdl_t entity_hdl, bool *presence)
                     }
                 }
             }
-            return rc;
         } else {
             STD_ASSERT(entity_priv_hdl->pres_pin_hdl != NULL);
             rc = sdi_pin_read_level(entity_priv_hdl->pres_pin_hdl,
@@ -75,15 +105,53 @@ t_std_error sdi_entity_presence_get(sdi_entity_hdl_t entity_hdl, bool *presence)
             if(rc != STD_ERR_OK){
                 return rc;
             }
+            *presence = ( (bus_val == SDI_PIN_LEVEL_HIGH) ? true : false );
         }
     } else {
         *presence = true;
-        return STD_ERR_OK;
     }
 
-    *presence = ( (bus_val == SDI_PIN_LEVEL_HIGH) ? true : false );
+    bool power_good = true;
+    if (entity_priv_hdl->type == SDI_ENTITY_PSU_TRAY) {
+        power_good = false;
+        bus_val = SDI_PIN_LEVEL_LOW;
+        if (entity_priv_hdl->power_output_status_pin_hdl != NULL) {
+            rc = sdi_pin_read_level(entity_priv_hdl->power_output_status_pin_hdl,
+                    &bus_val);
+            if(rc != STD_ERR_OK){
+                SDI_ERRMSG_LOG("Error in getting psu output power status, rc=%d",rc);
+            } else {
+                power_good = ( (bus_val == SDI_PIN_LEVEL_HIGH) ? true : false );
+            }
+        } else if (entity_priv_hdl->access_type == SDI_ENT_ACCESS_BMC) {
+            uint32_t reading = 0;
+            rc = sdi_bmc_dc_sensor_reading_get_by_name(entity_priv_hdl->power_output_status_attr,
+                    &reading);
+            if (rc == STD_ERR_OK) {
+                if ((STD_BIT_TEST(reading, SDI_BMC_PSU_STATUS_FAILURE))
+                        || (STD_BIT_TEST(reading, SDI_BMC_PSU_STATUS_INPUT_LOST))) {
+                    power_good = false;
+                } else {
+                    power_good = true;
+                }
+            }
+        }
+    }
+    
+    /* If presence state changed, take action */
+    bool old = entity_priv_hdl->present;
+    entity_priv_hdl->present = *presence;
+    if ((entity_priv_hdl->present && !old)
+            || ((entity_priv_hdl->entity_info_valid == false)
+                && (power_good == true))) {
+        sdi_entity_inserted(entity_priv_hdl);
+    } else if (!entity_priv_hdl->present && old) {
+        sdi_entity_removed(entity_priv_hdl);
+    }
+
     return rc;
 }
+
 /**
  * This function is required to support the fault status for the entities
  * which does not have a fault status pin. The entity fault is determined by checking

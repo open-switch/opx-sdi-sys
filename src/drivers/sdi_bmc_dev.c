@@ -77,6 +77,30 @@ void sdi_dump_bmc_config_list (sdi_device_hdl_t dev_hdl)
     }
 }
 
+sdi_bmc_dev_resource_info_t * sdi_bmc_dev_get_by_data_sdr (sdi_device_hdl_t dev_hdl, char *sdr_id)
+{
+    sdi_bmc_dev_t      *bmc_dev = NULL;
+    sdi_bmc_dev_list_t *dev_list = NULL;
+    sdi_bmc_dev_resource_info_t *ret = NULL;
+    uint32_t count = 0;
+
+    do {
+        if ((sdr_id == NULL) || (dev_hdl == NULL)) break;
+        bmc_dev = (sdi_bmc_dev_t *) dev_hdl->private_data;
+        if (bmc_dev == NULL) break;
+
+        dev_list = bmc_dev->dev_list;
+        for (count = 0; count < dev_list->count; count++) {
+            if (strcmp(dev_list->data[count].data_sdr_id, sdr_id) == 0) {
+                ret = &dev_list->data[count];
+                break;
+            }
+        }
+    } while (0);
+
+    return ret;
+}
+
 /**
  * sdi_bmc_populate_dev_list will walk through device config and populates
  * device list under BMC device.
@@ -146,6 +170,27 @@ sdi_bmc_dev_list_t * sdi_bmc_populate_dev_list(std_config_node_t node)
             attr = std_config_attr_get(cur_node, SDI_DEV_ATTR_MAX_SPEED);
             STD_ASSERT(attr != NULL);
             dev_list->data[count].max_fan_speed = (uint_t) strtoul(attr, NULL, 0);
+
+            attr = std_config_attr_get(cur_node, SDI_BMC_INT_USE_ELM_OFFSET);
+            if (attr != NULL) {
+                dev_list->data[count].int_use_elm_offset = (uint_t) strtoul(attr, NULL, 0x10);
+            } else {
+                dev_list->data[count].int_use_elm_offset = SDI_BMC_INVALID_OFFSET;
+            }
+
+            attr = std_config_attr_get(cur_node, SDI_BMC_AIRFLOW_OFFSET);
+            if (attr != NULL) {
+                dev_list->data[count].airflow_offset = (uint_t) strtoul(attr, NULL, 0x10);
+            } else {
+                dev_list->data[count].airflow_offset = SDI_BMC_INVALID_OFFSET;
+            }
+
+            attr = std_config_attr_get(cur_node, SDI_BMC_PSU_TYPE_OFFSET);
+            if (attr != NULL) {
+                dev_list->data[count].psu_type_offset = (uint_t) strtoul(attr, NULL, 0x10);
+            } else {
+                dev_list->data[count].psu_type_offset = SDI_BMC_INVALID_OFFSET;
+            }
         } else {
             continue;
         }

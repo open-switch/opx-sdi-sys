@@ -69,6 +69,22 @@ t_std_error sdi_fan_speed_set(sdi_resource_hdl_t fan_hdl, uint_t speed);
 t_std_error sdi_fan_status_get(sdi_resource_hdl_t fan_hdl, bool *alert_on);
 
 /**
+ * @brief Convert fan speed in RPM to percent
+ * @param[in] fan_hdl - Handle to fan resource
+ * @param[in] rpm - Speed in RPM
+ * @return - Speed in percent, [0..100]
+ */
+uint_t sdi_fan_speed_rpm_to_pct(sdi_resource_hdl_t fan_hdl, uint_t rpm);
+
+/**
+ * @brief Convert fan speed in percent to RPM
+ * @param[in] fan_hdl - Handle to fan resource
+ * @param[in] pct - Speed in percent
+ * @return - Speed in RPM
+ */
+uint_t sdi_fan_speed_pct_to_rpm(sdi_resource_hdl_t fan_hdl, uint_t pct);
+
+/**
  * @}
  */
 
