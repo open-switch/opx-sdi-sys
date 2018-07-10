@@ -71,7 +71,18 @@ typedef struct qsfp_device {
     qsfp_category_t  mod_category; /**<media category to distinguish between
                                      QSFP/QSFPPLUS/QSFP28/QSFPDD */
     sdi_media_speed_t  capability; /**<Front panel port or media capability */
+
+
+    sdi_media_module_info_t module_info;
+
+    sdi_media_port_info_t port_info;
+
+    uint_t eeprom_version; /* Used for QSFP28-DD EEPROM version */
 } qsfp_device_t;
+
+/* This function overrides the LP_MODE hardware pin. Use carefully */
+/* If this function is used to set power HIGH, one must also use it to set power LOW */
+t_std_error sdi_qsfp_media_force_power_mode_set(sdi_resource_hdl_t resource_hdl, bool state);
 
 /**
  * @brief Get the required module alarm status of qsfp
@@ -398,6 +409,26 @@ t_std_error sdi_qsfp_phy_serdes_control (sdi_resource_hdl_t resource_hdl, uint_t
 
 t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
                                    sdi_qsa_adapter_type_t* qsa_adapter);
+
+/**
+ * @brief API to get the info of the port in which the device is connected
+ * resource_hdl[in] - Handle of the resource
+ * sdi_media_port_info_t*[out] - port info type obtained
+ * return           - t_std_error
+ */
+
+t_std_error sdi_qsfp_port_info_get (sdi_resource_hdl_t resource_hdl,
+                                 sdi_media_port_info_t* port_info);
+
+/**
+ * @brief API to get the module
+ * resource_hdl[in] - Handle of the resource
+ * sdi_media_module_info_t*[out] - module info
+ * return           - t_std_error
+ */
+
+t_std_error sdi_qsfp_module_info_get (sdi_resource_hdl_t resource_hdl,
+                                 sdi_media_module_info_t* module_info);
 
 
 #endif

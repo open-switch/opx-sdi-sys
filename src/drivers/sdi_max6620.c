@@ -76,7 +76,7 @@ typedef struct max6620_resource_hdl
 }max6620_resource_hdl_t;
 
 /* Sets the speed of the fan referred by resource*/
-static t_std_error sdi_max6620_fan_speed_set(void *resource_hdl, uint_t speed);
+static t_std_error sdi_max6620_fan_speed_set(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t speed);
 /* This is the registration function for max6620 driver.*/
 t_std_error sdi_max6620_register(std_config_node_t node, void *bus_handle,
                                  sdi_device_hdl_t* device_hdl);
@@ -429,7 +429,7 @@ static t_std_error sdi_max6620_init_fan(sdi_device_hdl_t device_hdl, uint_t fan_
     speed_percent = DRV_VOLT_TO_SPEED_PERCENT(drv_volt);
     rpm = SPEED_PERCENT_TO_RPM(max6620_data->max6620_fan[fan_id].max_speed, speed_percent);
 
-    rc = sdi_max6620_fan_speed_set(&max6620_resource, rpm);
+    rc = sdi_max6620_fan_speed_set(0, &max6620_resource, rpm);
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("max6620_fan_speed_set failed for fan- %d rc: %d\n", fan_id, rc);
@@ -511,7 +511,7 @@ static t_std_error sdi_max6620_resource_init(void *resource_hdl, uint_t max_rpm)
  * SR = Speed Range (1,2,4,8,16,32) Value in the fan_dynamic register - 06h,07h,08h,09h
  * NP = For a nominal fan it will be two.
  */
-static t_std_error sdi_max6620_fan_speed_get(void *resource_hdl, uint_t *speed)
+static t_std_error sdi_max6620_fan_speed_get(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t *speed)
 {
     uint_t tach_count = 0;
     uint_t fan_id = 0;
@@ -560,7 +560,7 @@ static t_std_error sdi_max6620_fan_speed_get(void *resource_hdl, uint_t *speed)
  * [in] speed - Speed to be set
  * Return - STD_ERR_OK for success or the respective error code from i2c API in case of failure
  */
-static t_std_error sdi_max6620_fan_speed_set(void *resource_hdl, uint_t speed)
+static t_std_error sdi_max6620_fan_speed_set(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t speed)
 {
     uint_t tgt_tach_count = 0;
     uint_t fan_id = 0;

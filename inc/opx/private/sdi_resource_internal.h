@@ -44,7 +44,11 @@
 #ifndef __SDI_RESOURCE_INTERNAL_H_
 #define __SDI_RESOURCE_INTERNAL_H_
 
+#include <sys/types.h>
+#include <regex.h>
+
 #include "sdi_entity.h"
+#include "sdi_entity_internal.h"
 #include "sdi_sys_common.h"
 
 /**
@@ -60,6 +64,8 @@
  *   as defined in this mdoule be used.
  *
  */
+
+
 struct sdi_resource {
     /**
      * name : Name of the resource which is unique in the global space, and is always
@@ -84,6 +90,10 @@ struct sdi_resource {
      * ternimated.example, "BOOT_STATUS" led
      */
     char alias[SDI_MAX_NAME_LEN];
+    
+    struct sdi_entity *parent; /* Parent entity, to which this resource belongs */
+    bool entity_ppid_regexp_valid; /* Entity ppid pattern valid */
+    regex_t entity_ppid_regexp[1]; /* Resource available only if ppid of parent entity matches this pattern */
 };
 
 

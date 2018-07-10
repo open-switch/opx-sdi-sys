@@ -88,3 +88,55 @@ t_std_error sdi_fan_status_get(sdi_resource_hdl_t fan_hdl, bool *alert_on)
     *alert_on = (bool)db_value;
     return STD_ERR_OK;
 }
+
+/* Convert fan speed RPM to percent */
+
+uint_t sdi_fan_speed_rpm_to_pct(sdi_resource_hdl_t fan_hdl, uint_t rpm)
+{
+    t_std_error rc;
+    sdi_resource_hdl_t info_hdl;
+    uint_t max_speed;
+
+    /* Get the associated info handle for the fan */
+    rc = sdi_db_resource_get_associated_info(sdi_get_db_handle(), fan_hdl,
+                                             SDI_RESOURCE_FAN, &info_hdl);
+    if (rc != STD_ERR_OK) {
+        return rc;
+    }
+
+    /* Use the info handle to lookup the maximum speed of the fan */
+    rc = sdi_db_int_field_get(sdi_get_db_handle(), info_hdl,
+                              TABLE_INFO, INFO_FAN_MAX_SPEED,
+                              (int *)&max_speed);
+    if (rc != STD_ERR_OK) {
+        return rc;
+    }
+    
+    return (max_speed == 0 ? 100 : (100 * rpm) / max_speed);
+}
+
+/* Convert fan speed percent to RPM */
+
+uint_t sdi_fan_speed_pct_to_rpm(sdi_resource_hdl_t fan_hdl, uint_t pct)
+{
+    t_std_error rc;
+    sdi_resource_hdl_t info_hdl;
+    uint_t max_speed;
+
+    /* Get the associated info handle for the fan */
+    rc = sdi_db_resource_get_associated_info(sdi_get_db_handle(), fan_hdl,
+                                             SDI_RESOURCE_FAN, &info_hdl);
+    if (rc != STD_ERR_OK) {
+        return rc;
+    }
+
+    /* Use the info handle to lookup the maximum speed of the fan */
+    rc = sdi_db_int_field_get(sdi_get_db_handle(), info_hdl,
+                              TABLE_INFO, INFO_FAN_MAX_SPEED,
+                              (int *)&max_speed);
+    if (rc != STD_ERR_OK) {
+        return rc;
+    }
+    
+    return (max_speed == 0 ? max_speed : (pct * max_speed) / 100);
+}

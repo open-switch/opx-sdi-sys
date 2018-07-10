@@ -47,7 +47,7 @@ t_std_error sdi_fan_speed_get(sdi_resource_hdl_t hdl, uint_t *speed)
         return(SDI_ERRCODE(EPERM));
     }
 
-    rc = ((fan_ctrl_t *)fan_hdl->callback_fns)->speed_get(fan_hdl->callback_hdl,speed);
+    rc = ((fan_ctrl_t *)fan_hdl->callback_fns)->speed_get(hdl, fan_hdl->callback_hdl, speed);
     if(rc != STD_ERR_OK)
     {
         SDI_ERRMSG_LOG("Failed to get the speed for %s Fan",fan_hdl->name);
@@ -76,7 +76,7 @@ t_std_error sdi_fan_speed_set(sdi_resource_hdl_t hdl, uint_t speed)
     if(((fan_ctrl_t *)fan_hdl->callback_fns)->speed_set == NULL) {
         return  SDI_ERRCODE(EOPNOTSUPP);
     }
-    rc = ((fan_ctrl_t *)fan_hdl->callback_fns)->speed_set(fan_hdl->callback_hdl,speed);
+    rc = ((fan_ctrl_t *)fan_hdl->callback_fns)->speed_set(hdl, fan_hdl->callback_hdl, speed);
     if(rc != STD_ERR_OK)
     {
         SDI_ERRMSG_LOG("Failed to set the speed for %s Fan",fan_hdl->name);
@@ -113,3 +113,34 @@ t_std_error sdi_fan_status_get(sdi_resource_hdl_t hdl, bool *status)
     return rc;
 }
 
+/* Convert fan speed RPM to percent */
+
+uint_t sdi_fan_speed_rpm_to_pct(sdi_resource_hdl_t hdl, uint_t rpm)
+{
+    sdi_resource_priv_hdl_t fan_hdl = (sdi_resource_priv_hdl_t) hdl;
+    uint_t (*f)(sdi_resource_hdl_t, void *, uint_t)
+        = ((fan_ctrl_t *) fan_hdl->callback_fns)->speed_rpm_to_pct;
+    if (f == 0) {
+        /* No callback given => fall back to % of max speed */
+        sdi_entity_priv_hdl_t e = fan_hdl->parent;
+        return (e->entity_info_valid ? (100 * rpm) / e->entity_info.max_speed : 100);
+    }
+
+    return ((*f)(hdl, fan_hdl->callback_hdl, rpm));
+}
+
+/* Convert fan speed percent to RPM */
+
+uint_t sdi_fan_speed_pct_to_rpm(sdi_resource_hdl_t hdl, uint_t pct)
+{
+    sdi_resource_priv_hdl_t fan_hdl = (sdi_resource_priv_hdl_t) hdl;
+    uint_t (*f)(sdi_resource_hdl_t, void *, uint_t)
+        = ((fan_ctrl_t *) fan_hdl->callback_fns)->speed_pct_to_rpm;
+    if (f == 0) {
+        /* No callback given => fall back to fraction of max speed */
+        sdi_entity_priv_hdl_t e = fan_hdl->parent;
+        return (e->entity_info_valid ? (pct * e->entity_info.max_speed) / 100 : 0);
+    }
+
+    return ((*f)(hdl, fan_hdl->callback_hdl, pct));
+}

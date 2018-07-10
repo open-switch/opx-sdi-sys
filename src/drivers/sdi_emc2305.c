@@ -134,7 +134,7 @@ static const uint8_t min_drv_reg[] = { EMC2305_FAN0_MIN_DRV_REG,
 };
 
 /* Sets the speed of the fan referred by resource*/
-static t_std_error sdi_emc2305_fan_speed_set(void *resource_hdl, uint_t speed);
+static t_std_error sdi_emc2305_fan_speed_set(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t speed);
 /* This is the registration function for emc2305 driver.*/
 static t_std_error sdi_emc2305_register(std_config_node_t node, void *bus_handle,
                                         sdi_device_hdl_t* device_hdl);
@@ -273,7 +273,7 @@ static t_std_error sdi_emc2305_resource_init(void *resource_hdl, uint_t max_rpm)
         emc2305_data->emc2305_fan[fan_id].max_speed = max_rpm;
     }
 
-    rc = sdi_emc2305_fan_speed_set(resource_hdl,
+    rc = sdi_emc2305_fan_speed_set(0, resource_hdl,
                                    emc2305_data->emc2305_fan[fan_id].max_speed);
     if(rc != STD_ERR_OK) {
         SDI_DEVICE_ERRMSG_LOG("emc2305_fan_speed_set failed for fan-%d rc: %d",
@@ -304,7 +304,7 @@ static t_std_error sdi_emc2305_resource_init(void *resource_hdl, uint_t max_rpm)
  *      N     - Number of edges
  *      M     - Multiplier defined by the Range bits
  */
-static t_std_error sdi_emc2305_fan_speed_get(void *resource_hdl, uint_t *speed)
+static t_std_error sdi_emc2305_fan_speed_get(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t *speed)
 {
     uint8_t tach= 0, ltach = 0;
     uint16_t count = 0;
@@ -367,7 +367,7 @@ static uint16_t sdi_rpm_to_tach_count (emc2305_fan_data_t *fan_data, uint_t spee
  * Return           - STD_ERR_OK for success or the respective error code from
  *                    i2c API in case of failure
  */
-static t_std_error sdi_emc2305_fan_speed_set(void *resource_hdl, uint_t speed)
+static t_std_error sdi_emc2305_fan_speed_set(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t speed)
 {
     uint_t fan_id = 0;
     uint8_t setting= 0;

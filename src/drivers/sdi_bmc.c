@@ -37,14 +37,13 @@
 #include <OpenIPMI/ipmi_posix.h>
 #include <OpenIPMI/ipmi_fru.h>
 
+#include <unistd.h>
 #include <sys/time.h>
 #include <signal.h>
 #include <string.h>
 #include <stdio.h>
 
 static ipmi_domain_id_t domain_id;
-static std_condition_var_t _ipmi_ready_cond;
-static std_mutex_lock_create_static_init_fast(_ipmi_ready_mutex);
 
 static int32_t sdi_bmc_entity_presence_handler (ipmi_entity_t *entity, int32_t present,
                                                 void *cb_data, ipmi_event_t  *event);
@@ -224,7 +223,7 @@ static void sdi_bmc_sensor_update_handler (enum ipmi_update_e op, ipmi_entity_t 
 }
 
 static int sdi_bmc_ipmi_traverse_fru_node_tree (ipmi_fru_node_t *node,
-                                                sdi_bmc_sensor_t *srp)
+                                                sdi_bmc_sensor_t *srp, void *cb_data)
 {
     const char                *name;
     unsigned int              i;
@@ -236,6 +235,7 @@ static int sdi_bmc_ipmi_traverse_fru_node_tree (ipmi_fru_node_t *node,
     unsigned int              data_len;
     ipmi_fru_node_t           *sub_node;
 
+    srp->res.entity_info.valid = true;
     for (i = 0; ; i++) {
         data = NULL;
 
@@ -247,7 +247,21 @@ static int sdi_bmc_ipmi_traverse_fru_node_tree (ipmi_fru_node_t *node,
             continue;
         }
 
-        if (strncmp("board_info_board_manufacturer", name,
+        if (strcmp("internal_use", name) == 0) {
+            sdi_bmc_dev_resource_info_t *res = sdi_bmc_dev_get_by_data_sdr(cb_data, srp->name);
+            uint32_t elm_data = 0;
+            if (res != NULL) {
+                if (res->int_use_elm_offset < data_len) {
+                    elm_data = data[res->int_use_elm_offset];
+                    if ((elm_data + res->airflow_offset) <= data_len) {
+                        srp->res.entity_info.air_flow = data[(elm_data + res->airflow_offset)];
+                    }
+                    if ((elm_data + res->psu_type_offset) <= data_len) {
+                        srp->res.entity_info.type = data[(elm_data + res->psu_type_offset)];
+                    }
+                }
+            }
+        } else if (strncmp("board_info_board_manufacturer", name,
                     strlen("board_info_board_manufacturer")) == 0) {
             if (dtype == IPMI_FRU_DATA_ASCII) {
                 safestrncpy(srp->res.entity_info.board_manufacturer, data,
@@ -313,7 +327,7 @@ static void sdi_bmc_ipmi_fru_update_handler (enum ipmi_update_e op,
             SDI_DEVICE_TRACEMSG_LOG("ipmi fru get root node failed.");
             return;
         }
-        sdi_bmc_ipmi_traverse_fru_node_tree(node, srp);
+        sdi_bmc_ipmi_traverse_fru_node_tree(node, srp, cb_data);
     }
     return;
 
@@ -351,7 +365,7 @@ static void sdi_bmc_entity_update_handler (enum ipmi_update_e op, ipmi_domain_t 
                 || (ent->type == IPMI_ENTITY_ID_FAN_COOLING)) {
             sdi_bmc_add_entity_fru_info(entity);
             rv = ipmi_entity_add_fru_update_handler(entity,
-                    sdi_bmc_ipmi_fru_update_handler, NULL);
+                    sdi_bmc_ipmi_fru_update_handler, cb_data);
             if (rv != 0) {
                 SDI_DEVICE_ERRMSG_LOG("ipmi_entity_add_fru_update_handler: 0x%x", rv);
             }
@@ -607,6 +621,11 @@ sdi_bmc_sensor_t *sdi_bmc_add_entity_fru_info (ipmi_entity_t *entity)
             srp->reading_type = SDI_SDR_READING_ENTITY_INFO;
             srp->type = IPMI_SENSOR_TYPE_OTHER_FRU;
         }
+    } else {
+        srp->reading_type = SDI_SDR_READING_ENTITY_INFO;
+        srp->type = IPMI_SENSOR_TYPE_OTHER_FRU;
+        srp->entity_id = id;
+        srp->entity_instance = instance;
     }
     return srp;
 }
@@ -635,15 +654,6 @@ static void sdi_bmc_iterate_entities_cb (ipmi_entity_t *entity, void *cb_data)
     if (rv != 0) {
         SDI_DEVICE_ERRMSG_LOG("ipmi entity add presence handler failed(%d,%d): 0x%x",
                                id, instance, rv);
-    }
-    if ((ent->type == IPMI_ENTITY_ID_POWER_SUPPLY)
-            || (ent->type == IPMI_ENTITY_ID_FAN_COOLING)) {
-        sdi_bmc_add_entity_fru_info(entity);
-        rv = ipmi_entity_add_fru_update_handler(entity,
-                sdi_bmc_ipmi_fru_update_handler, NULL);
-        if (rv != 0) {
-            SDI_DEVICE_ERRMSG_LOG("ipmi entity add fru update handler failed(0x%x)", rv);
-        }
     }
     ipmi_entity_iterate_sensors(entity, sdi_bmc_iterate_sensors_cb, NULL);
     return;
@@ -676,8 +686,9 @@ static void sdi_bmc_open_domain_handler (ipmi_domain_t *domain, int32_t error,
     if (rv != 0) {
         SDI_DEVICE_ERRMSG_LOG("ipmi domain enable events failed %d.", rv);
     }
+    ipmi_domain_set_ipmb_rescan_time(domain, 10);
     rv = ipmi_domain_add_entity_update_handler(domain,
-                                               sdi_bmc_entity_update_handler, NULL);
+                                               sdi_bmc_entity_update_handler, user_data);
     if (rv != 0) {
         SDI_DEVICE_ERRMSG_LOG("ipmi_domain_add_entity_update_handler failed, error : %d\n", rv);
     }
@@ -691,12 +702,16 @@ static void sdi_bmc_open_domain_handler (ipmi_domain_t *domain, int32_t error,
 void sdi_bmc_conection_established (ipmi_domain_t *domain, void *cb_data)
 {
     SDI_DEVICE_TRACEMSG_LOG("Connection established, fully up.");
-
-    ipmi_domain_pointer_cb(domain_id, sdi_bmc_iterate_entities, NULL);
-    std_mutex_lock(&_ipmi_ready_mutex);
-    std_condition_var_signal(&_ipmi_ready_cond);
-    std_mutex_unlock(&_ipmi_ready_mutex);
+    ipmi_domain_pointer_cb(domain_id, sdi_bmc_iterate_entities, cb_data);
 }
+
+typedef struct sdi_bmc_thread_param_s {
+    os_handler_t      *os_hnd;
+    sdi_device_hdl_t  dev_hdl;
+} sdi_bmc_thread_param_t;
+
+static void sdi_bmc_event_thread (void *param);
+static void sdi_bmc_poller_thread (void *param);
 
 /**
  * BMC main thread init function which handles creating a domain and
@@ -708,14 +723,17 @@ t_std_error sdi_bmc_device_driver_thread (void *param)
     static os_handler_t *os_hnd;
     static ipmi_con_t  *con;
     t_std_error ret = STD_ERR_OK;
+    static sdi_bmc_thread_param_t tparam;
 
-    os_hnd = ipmi_posix_setup_os_handler();
+    os_hnd = ipmi_posix_thread_setup_os_handler(SIGUSR2);
     if (!os_hnd) {
         SDI_DEVICE_ERRMSG_LOG("Unable to setup OS handlers.");
         return (SDI_ERRCODE(EPERM));
     }
 
     do {
+        tparam.os_hnd = os_hnd;
+        tparam.dev_hdl = param;
         rv = ipmi_init(os_hnd);
         if (rv != 0) {
             SDI_DEVICE_ERRMSG_LOG("IPMI initialization failed : %s.", strerror(rv));
@@ -734,14 +752,27 @@ t_std_error sdi_bmc_device_driver_thread (void *param)
                                          {IPMI_OPEN_OPTION_SEL, {1}},
                                          {IPMI_OPEN_OPTION_SET_EVENT_RCVR, {1}}};
         rv = ipmi_open_domain("PAS-DOMAIN", &con, 1, sdi_bmc_open_domain_handler,
-                NULL, sdi_bmc_conection_established, NULL, options, 4, &domain_id);
+                param, sdi_bmc_conection_established, param, options, 4, &domain_id);
         if (rv != 0) {
             SDI_DEVICE_ERRMSG_LOG("IPMI open domain failed : %s.", strerror(rv));
             ret = SDI_ERRCODE(EPERM);
             break;
         }
-        os_hnd->operation_loop(os_hnd);
 
+        rv = os_hnd->create_thread(os_hnd, 0, sdi_bmc_event_thread, &tparam);
+        if (rv != 0) {
+            SDI_DEVICE_ERRMSG_LOG("Creating IPMI event thread failed: %s.", strerror(rv));
+            ret = SDI_ERRCODE(EPERM);
+            break;
+        }
+
+        rv = os_hnd->create_thread(os_hnd, 0, sdi_bmc_poller_thread, &tparam);
+        if (rv != 0) {
+            SDI_DEVICE_ERRMSG_LOG("Creating IPMI poller thread failed: %s.", strerror(rv));
+            ret = SDI_ERRCODE(EPERM);
+            break;
+        }
+        pause();
     } while (0);
 
     if (ret != STD_ERR_OK) {
@@ -753,7 +784,6 @@ t_std_error sdi_bmc_device_driver_thread (void *param)
 }
 
 static std_thread_create_param_t bmc_thread_entry[1];
-static std_thread_create_param_t bmc_poller_entry[1];
 
 /**
  * Thread cleanup functions.
@@ -767,32 +797,34 @@ void sdi_bmc_thread_cleanup (void)
         std_thread_destroy_struct(bmc_thread_entry);
     }
 
-    if ((bmc_poller_entry->name != NULL)
-            || (bmc_poller_entry->thread_function != NULL)
-            || (bmc_poller_entry->param != NULL)) {
-        pthread_kill(*(pthread_t *)bmc_poller_entry->thread_id, SIGTERM);
-        std_thread_destroy_struct(bmc_poller_entry);
-
-    }
     sdi_bmc_db_entity_cleanup();
     sdi_bmc_db_sensor_cleanup();
 }
 
 /**
+ * BMC Event thread init function and it will listening for events.
+ */
+
+static void sdi_bmc_event_thread (void *param)
+{
+    sdi_bmc_thread_param_t *tparam = (sdi_bmc_thread_param_t *) param;
+    tparam->os_hnd->operation_loop(tparam->os_hnd);
+}
+/**
  * BMC poller thread init function. iterate, read and update sensor data
  * based on configured polling interval.
  */
-t_std_error sdi_bmc_poller_thread (void *param)
+static void sdi_bmc_poller_thread (void *param)
 {
-    t_std_error ret = STD_ERR_OK;
-    sdi_device_hdl_t dev_hdl = param;
+    sdi_device_hdl_t dev_hdl = ((sdi_bmc_thread_param_t *)param)->dev_hdl;
     sdi_bmc_dev_t     *bmc_dev = (sdi_bmc_dev_t *) dev_hdl->private_data;
 
+    sleep(100);
     while (true) {
         std_usleep(MILLI_TO_MICRO((bmc_dev->polling_interval * 1000)));
-        ipmi_domain_pointer_cb(domain_id, sdi_bmc_iterate_entities, NULL);
+        ipmi_domain_pointer_cb(domain_id, sdi_bmc_iterate_entities, dev_hdl);
     }
-    return ret;
+    return;
 }
 
 /**
@@ -802,8 +834,7 @@ t_std_error sdi_bmc_poller_thread (void *param)
 t_std_error sdi_bmc_device_driver_init (sdi_device_hdl_t dev_hdl)
 {
     sdi_bmc_thread_cleanup();
-    std_condition_var_init(&_ipmi_ready_cond);
-    std_mutex_lock(&_ipmi_ready_mutex);
+
 
     std_thread_init_struct(bmc_thread_entry);
     bmc_thread_entry->name = "sdi-bmc";
@@ -811,18 +842,6 @@ t_std_error sdi_bmc_device_driver_init (sdi_device_hdl_t dev_hdl)
     bmc_thread_entry->param = dev_hdl;
     if (std_thread_create(bmc_thread_entry) != STD_ERR_OK)  {
         SDI_DEVICE_ERRMSG_LOG("Error in creating BMC event handling thread.");
-        std_mutex_unlock(&_ipmi_ready_mutex);
-        return SDI_ERRCODE(EPERM);
-    }
-    std_condition_var_wait(&_ipmi_ready_cond, &_ipmi_ready_mutex);
-    std_mutex_unlock(&_ipmi_ready_mutex);
-
-    std_thread_init_struct(bmc_poller_entry);
-    bmc_poller_entry->name = "bmc-poller";
-    bmc_poller_entry->thread_function = (std_thread_function_t) sdi_bmc_poller_thread;
-    bmc_poller_entry->param = dev_hdl;
-    if (std_thread_create(bmc_poller_entry) != STD_ERR_OK)  {
-        SDI_DEVICE_ERRMSG_LOG("Error in creating BMC poller thread.");
         return SDI_ERRCODE(EPERM);
     }
 

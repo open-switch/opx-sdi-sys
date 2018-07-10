@@ -102,7 +102,7 @@ libopx_sdi_device_drivers_la_SOURCES = \
         src/drivers/sdi_fpga_pci_bus.c
         
 
-libopx_sdi_device_drivers_la_LIBADD = libopx_sdi_framework.la -lopx_common -lopx_logging -lz -lm -lpthread -lOpenIPMI -lOpenIPMIposix
+libopx_sdi_device_drivers_la_LIBADD = libopx_sdi_framework.la -lopx_common -lopx_logging -lz -lm -lpthread -lOpenIPMI -lOpenIPMIposix -lOpenIPMIpthread
 libopx_sdi_device_drivers_la_LDFLAGS = -version-info 1:1:0 -shared $(LD_HARDEN_FLAGS) 
 libopx_sdi_device_drivers_la_CFLAGS = -I$(top_srcdir)/inc/opx -I$(top_srcdir)/inc/opx/private -I$(top_srcdir)/inc/opx/private/eeprom -I$(includedir)/opx -fpic $(COMMON_HARDEN_FLAGS) $(C_HARDEN_FLAGS)
 

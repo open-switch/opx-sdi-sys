@@ -128,6 +128,16 @@
 /* @def Attribute used for representing 10G mode value for port led  */
 #define SDI_MEDIA_PORT_LED_10G_MODE_VALUE       "port_led_10g_mode_value"
 
+/**
+ * @def Attribute used for representing max power the port can provide in mW
+ */
+#define SDI_MEDIA_MAX_PORT_POWER_MILLIWATTS      "max_port_power_mw"
+
+#define SDI_MEDIA_DEFAULT_QSFP28_DD_MAX_PORT_POWER_MILLIWATTS     7000
+#define SDI_MEDIA_DEFAULT_QSFP28_MAX_PORT_POWER_MILLIWATTS        4500
+#define SDI_MEDIA_DEFAULT_QSFP_MAX_PORT_POWER_MILLIWATTS          3500
+#define SDI_MEDIA_DEFAULT_SFP_MAX_PORT_POWER_MILLIWATTS           2000
+
 /* @def Attribute used for representing port type SFP/SFP28/QSFP/QSFP28/DD-QSFP28 */
 #define SDI_MEDIA_PORT_TYPE                     "port_type"
 

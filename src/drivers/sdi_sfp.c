@@ -162,6 +162,18 @@ t_std_error sdi_sfp_led_set (sdi_resource_hdl_t resource_hdl, uint_t channel,
     return rc;
 }
 
+/* Not yet implemented */
+t_std_error sdi_sfp_module_info_get (sdi_resource_hdl_t resource_hdl,
+                                 sdi_media_module_info_t* module_info)
+{
+    return STD_ERR_OK;
+}
+t_std_error sdi_sfp_port_info_get (sdi_resource_hdl_t resource_hdl,
+                                 sdi_media_port_info_t* port_info)
+{
+   return STD_ERR_OK;
+}
+
 /* Callback handlers for SFP */
 static media_ctrl_t sfp_media = {
     .presence_get = sdi_sfp_presence_get,
@@ -198,7 +210,10 @@ static media_ctrl_t sfp_media = {
     .media_phy_power_down_enable = sdi_sfp_phy_power_down_enable,
     .ext_rate_select = NULL, /* Ext rate select is not supported on SFP */
     .media_phy_serdes_control = sdi_sfp_phy_serdes_control,
-    .media_qsa_adapter_type_get = sdi_sfp_qsa_adapter_type_get
+    .media_qsa_adapter_type_get = sdi_sfp_qsa_adapter_type_get,
+    .media_port_info_get = sdi_sfp_port_info_get,
+    .media_module_info_get = sdi_sfp_module_info_get
+
 };
 
 /*
@@ -368,6 +383,19 @@ static t_std_error sdi_sfp_register (std_config_node_t node, void *bus_handle,
         STD_ASSERT(led_node_attr != NULL);
         sfp_data->port_led.led_10g_mode_value = strtoul(led_node_attr, NULL, 16);
     }
+
+    node_attr = std_config_attr_get(node, SDI_MEDIA_MAX_PORT_POWER_MILLIWATTS);
+
+    if (node_attr == NULL){
+        sfp_data->port_info.max_port_power_mw = SDI_MEDIA_DEFAULT_SFP_MAX_PORT_POWER_MILLIWATTS;
+
+        SDI_DEVICE_TRACEMSG_LOG("Could not find max port power in config file for  %s"
+            "Defaulting to %u mW max port power", dev_hdl->alias,
+                 sfp_data->port_info.max_port_power_mw);
+    } else {
+        sfp_data->port_info.max_port_power_mw = strtoul(node_attr, NULL, 0);
+    }
+
 
     dev_hdl->private_data = (void *)sfp_data;
 
