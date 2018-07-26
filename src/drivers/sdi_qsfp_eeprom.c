@@ -60,7 +60,9 @@
 /* To be removed once full qsfp28 dd rev 2 support is added */
 #define QSFP28_DD_EEPROM_VERSION_OFFSET   1
 #define QSFP28_DD_EEPROM_VERSION_2        0x20
+#define QSFP28_DD_EEPROM_VERSION_3        0x30
 #define QSFP28_DD_DATAPATH_POWERUP_OFFSET 92
+#define QSFP28_DD_DATAPATH_POWERUP_OFFSET_REV3 128 // on page 16
 #define QSFP28_DD_DATAPATH_POWERUP_VALUE  0xFF
 
 /* QSFP channel numbers */
@@ -124,6 +126,35 @@ static sdi_qsfp_reg_info_t param_reg_info[] = {
     { QSFP_FREE_SIDE_DEV_PROP_OFFSET, SDI_QSFP_BYTE_SIZE}, /* For  SDI_FREE_SIDE_DEV_PROP */
 };
 
+/* For QSFP28-DD rev 3: parameter register information strucutre. Parameters should be defined in the
+ * same order of sdi_media_param_type_t */
+   static sdi_qsfp_reg_info_t param_reg_info_qsfp28_dd_r3[] = {
+    { 0, 0 }, /* not yet implemented */
+    { 0, 0 }, /* for 0 */
+    { 0, 0 }, /* for SDI_MEDIA_MAX_CASE_TEMP */
+    { 0, 0 }, /* for SDI_MEDIA_CC_BASE */
+    { 0, 0 }, /* for SDI_MEDIA_CC_EXT */
+    { QSFP28_DD_R3_CONNECTOR_OFFSET, SDI_QSFP_BYTE_SIZE }, /* for SDI_MEDIA_CONNECTOR */
+    { 0, 0 }, /* for SDI_MEDIA_ENCODING_TYPE */
+    { 0, 0 }, /* for SDI_MEDIA_NM_BITRATE */
+    { QSFP28_DD_R3_IDENTIFIER_OFFSET, SDI_QSFP_BYTE_SIZE }, /* for SDI_MEDIA_IDENTIFIER */
+    { 0, 0 }, /* for SDI_MEDIA_EXT_IDENTIFIER */
+    { 0, 0 }, /* for SDI_MEDIA_LENGTH_SMF_KM */
+    { 0, 0 }, /* for SDI_MEDIA_LENGTH_OM1 */
+    { 0, 0 }, /* for SDI_MEDIA_LENGTH_OM2 */
+    { 0, 0 }, /* for SDI_MEDIA_LENGTH_OM3 */
+    { QSFP28_DD_R3_LENGTH_CABLE_ASSEMBLY_OFFSET, SDI_QSFP_BYTE_SIZE  }, /* for SDI_MEDIA_LENGTH_CABLE_ASSEMBLY */
+    { 0, 0}, /* for SDI_MEDIA_LENGTH_SMF, not supported on QSFP28_DD_R3 */
+    { 0, 0 }, /* for SDI_MEDIA_OPTIONS */
+    { 0, 0 }, /* for SDI_MEDIA_ENHANCED_OPTIONS */
+    { 0, 0 }, /* for SDI_MEDIA_DIAG_MON_TYPE */
+    { 0, 0 }, /* for SDI_MEDIA_DEVICE_TECH */
+    { 0, 0 }, /* for SDI_MEDIA_MAX_BITRATE, not supported on QSFP28_DD_R3 */
+    { 0, 0 }, /* for SDI_MEDIA_MIN_BITRATE, not supported on QSFP28_DD_R3 */
+    { 0, 0 }, /* for SDI_MEDIA_EXT_COMPLIANCE_CODE, not supported on QSFP28_DD_R3 */
+    { 0, 0 }, /* For  SDI_FREE_SIDE_DEV_PROP */
+};
+
 /* vendor register information structure. Parameters in this structure should be
  * defined in the same order of sdi_media_vendor_info_type_t */
 static sdi_qsfp_reg_info_t vendor_reg_info[] = {
@@ -135,6 +166,19 @@ static sdi_qsfp_reg_info_t vendor_reg_info[] = {
     { QSFP_VENDOR_REVISION_OFFSET, SDI_MEDIA_MAX_VENDOR_REVISION_LEN, true }, /* for SDI_MEDIA_VENDOR_REVISION */
     { QSFP_VENDOR_PN_OFFSET, SDI_MEDIA_MAX_VENDOR_PART_NUMBER_LEN, true } /* Repeated because field not applicable in QSFP*/
 };
+
+/* vendor register information structure. Parameters in this structure should be
+ * defined in the same order of sdi_media_vendor_info_type_t */
+static sdi_qsfp_reg_info_t vendor_reg_info_qsfp28_dd_r3[] = {
+    { QSFP28_DD_R3_VENDOR_NAME_OFFSET, SDI_MEDIA_MAX_VENDOR_NAME_LEN, true }, /* for SDI_MEDIA_VENDOR_NAME */
+    { QSFP28_DD_R3_VENDOR_OUI_OFFSET, SDI_MEDIA_MAX_VENDOR_OUI_LEN, false }, /* for SDI_MEDIA_VENDOR_OUI */
+    { QSFP28_DD_R3_VENDOR_SN_OFFSET, SDI_MEDIA_MAX_VENDOR_SERIAL_NUMBER_LEN, true }, /* for SDI_MEDIA_VENDOR_SN */
+    { QSFP28_DD_R3_VENDOR_DATE_OFFSET, SDI_MEDIA_MAX_VENDOR_DATE_LEN, true }, /* for SDI_MEDIA_VENDOR_DATE */
+    { QSFP28_DD_R3_VENDOR_PN_OFFSET, SDI_MEDIA_MAX_VENDOR_PART_NUMBER_LEN, true }, /* for SDI_MEDIA_VENDOR_PN */
+    { QSFP28_DD_R3_VENDOR_REVISION_OFFSET, SDI_MEDIA_MAX_VENDOR_REVISION_LEN, true }, /* for SDI_MEDIA_VENDOR_REVISION */
+    { QSFP28_DD_R3_VENDOR_PN_OFFSET, SDI_MEDIA_MAX_VENDOR_PART_NUMBER_LEN, true } /* Repeated because field not applicable in QSFP*/
+};
+
 
 /* threshold value register information structure. Parameters in this structure
  * should be defined in the same order of sdi_media_threshold_type_t */
@@ -407,6 +451,199 @@ static inline t_std_error sdi_is_rate_select_supported(sdi_device_hdl_t qsfp_dev
 
     return rc;
 }
+
+static inline t_std_error sdi_is_software_controlled_power_mode_supported (
+                            sdi_device_hdl_t qsfp_device, bool *support_status)
+{
+    t_std_error rc = STD_ERR_OK;
+    uint8_t buf = 0;
+    bool paging_support = true;
+
+    STD_ASSERT(qsfp_device != NULL);
+    STD_ASSERT(support_status != NULL);
+
+    *support_status = false;
+
+    if (sdi_is_paging_supported(qsfp_device, &paging_support) != STD_ERR_OK){
+            SDI_DEVICE_ERRMSG_LOG("Unable to check for paging support on %s",
+                    qsfp_device->alias);
+    } else if (paging_support) {
+        rc = sdi_qsfp_page_select(qsfp_device, SDI_MEDIA_PAGE_DEFAULT);
+        if(rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("page 0 selection is failed for %s",
+                        qsfp_device->alias);
+        }
+    }
+
+    rc = sdi_smbus_read_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
+                             QSFP_EXT_IDENTIFIER_OFFSET, &buf, SDI_I2C_FLAG_NONE);
+    if (rc != STD_ERR_OK){
+        SDI_DEVICE_ERRMSG_LOG("Soft power mode check: qsfp smbus read failed at addr : %d rc : %d",
+                              qsfp_device->addr, rc);
+        return rc;
+    }
+
+    if ( buf & 0x03 ) {
+        *support_status = true;
+    } else {
+        *support_status = false;
+    }
+
+    return rc;
+}
+
+
+t_std_error sdi_qsfp_media_max_power_get (sdi_resource_hdl_t resource_hdl, int *pwr_milliwatts, bool* soft_ctrl)
+{
+    sdi_device_hdl_t qsfp_device = NULL;
+    qsfp_device_t *qsfp_priv_data = NULL;
+    uint8_t buf = 0;
+    t_std_error rc = STD_ERR_OK;
+
+
+    STD_ASSERT(resource_hdl != NULL);
+    qsfp_device = (sdi_device_hdl_t)resource_hdl;
+    qsfp_priv_data = (qsfp_device_t *)qsfp_device->private_data;
+    STD_ASSERT(qsfp_priv_data != NULL);
+    *soft_ctrl = false;
+    *pwr_milliwatts = SDI_MEDIA_NO_MAX_POWER_DEFINED;
+
+    if (qsfp_priv_data->mod_type == QSFP_QSA_ADAPTER) {
+        return SDI_ERRCODE(ENOTSUP);
+    }
+
+    if ((rc = sdi_qsfp_module_select(qsfp_device)) != STD_ERR_OK) {
+        SDI_DEVICE_ERRMSG_LOG("QSFP module selection failed when attempting max power get for %s",
+             qsfp_device->alias);
+        return rc;
+    }
+
+    do {
+        std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
+
+        rc = sdi_smbus_read_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
+                                QSFP_EXT_IDENTIFIER_OFFSET, &buf, SDI_I2C_FLAG_NONE);
+
+        if(rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Unable to get max power info for media on %s",
+                 qsfp_device->alias);
+            return rc;
+        }
+
+        /* Check the upper 2 bits first: for legacy QSFP(28) */
+        switch ((buf & 0xC0) >> 6) {
+            case 0:
+                *pwr_milliwatts = 1500;
+                break;
+            case 1:
+                *pwr_milliwatts = 2000;
+                break;
+            case 2:
+                *pwr_milliwatts = 2500;
+                break;
+            case 3:
+                *pwr_milliwatts = 3500;
+                break;
+        }
+
+        /* If lower 2 bits are set, they override the upper 2 bit power value */
+        switch ((buf & 0x03)) {
+            case 0:
+                /* use upper two bits defined previously */
+                break;
+            case 1:
+                *soft_ctrl = true;
+                *pwr_milliwatts = 4000;
+                break;
+            case 2:
+                *soft_ctrl = true;
+                *pwr_milliwatts = 4500;
+                break;
+            case 3:
+                *soft_ctrl = true;
+                *pwr_milliwatts = 5000;
+                break;
+        }
+
+    } while(0);
+
+    sdi_qsfp_module_deselect(qsfp_priv_data);
+    return rc;
+}
+
+
+/* This function overrides the LP_MODE hardware pin. Use carefully */
+/* If this function is used to set power HIGH, one must also use it to set power LOW */
+t_std_error sdi_qsfp_media_force_power_mode_set(sdi_resource_hdl_t resource_hdl, bool state)
+{
+    sdi_device_hdl_t qsfp_device = NULL;
+    qsfp_device_t *qsfp_priv_data = NULL;
+    uint8_t buf = 0;
+    bool feature_sup, power_set_bit, hp_class_enable_bit, lp_mode_pin_override_bit;
+    t_std_error rc = STD_ERR_OK;
+
+
+    power_set_bit = !state; /* Power set bit is active low. This sets the value when power override bit is used */
+    hp_class_enable_bit = state;
+    lp_mode_pin_override_bit = true;  /* Always override the hw pin*/
+
+    STD_ASSERT(resource_hdl != NULL);
+    qsfp_device = (sdi_device_hdl_t)resource_hdl;
+    qsfp_priv_data = (qsfp_device_t *)qsfp_device->private_data;
+    STD_ASSERT(qsfp_priv_data != NULL);
+
+    if (qsfp_priv_data->mod_type == QSFP_QSA_ADAPTER) {
+        return SDI_ERRCODE(ENOTSUP);
+    }
+
+    if ((rc = sdi_qsfp_module_select(qsfp_device)) != STD_ERR_OK) {
+        SDI_DEVICE_ERRMSG_LOG("QSFP module selection failed when attempting mode class set for %s",
+             qsfp_device->alias);
+        return rc;
+    }
+
+    do {
+        std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
+
+        rc = sdi_is_software_controlled_power_mode_supported(qsfp_device, &feature_sup);
+
+        if(rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Unable to get soft control power info for media on %s; rc %u",
+                 qsfp_device->alias, rc);
+            break;
+        } else if (!feature_sup){
+            rc = SDI_ERRCODE(ENOTSUP);
+            break;
+        }
+
+        rc = sdi_smbus_read_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
+                             QSFP_POWER_CLASS_CONTROL_OFFSET, &buf, SDI_I2C_FLAG_NONE);
+        if(rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Unable to read EEPROM to get power class state for media on %s;, rc %u",
+                 qsfp_device->alias, rc);
+            break;
+        }
+
+        hp_class_enable_bit ? STD_BIT_SET(buf, 2) : STD_BIT_CLEAR(buf, 2);
+        power_set_bit ? STD_BIT_SET(buf, 1) : STD_BIT_CLEAR(buf, 1);
+        lp_mode_pin_override_bit ? STD_BIT_SET(buf, 0) : STD_BIT_CLEAR(buf, 0);
+
+        std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
+        rc = sdi_smbus_write_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
+                             QSFP_POWER_CLASS_CONTROL_OFFSET, buf, SDI_I2C_FLAG_NONE);
+        if(rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Unable to write EEPROM to set power class state for media on %s;, rc %u",
+                 qsfp_device->alias, rc);
+            break;
+        }
+    } while (0);
+
+    sdi_qsfp_module_deselect(qsfp_priv_data);
+    return rc;
+}
+
+
+
 
 /* Internally measured Module temperature are represented as a
  * 16-bit signed twos complement value in increments of 1/256
@@ -1282,8 +1519,13 @@ t_std_error sdi_qsfp_parameter_get(sdi_resource_hdl_t resource_hdl,
                                      param, value);
     }
 
-    offset = param_reg_info[param].offset;
-    size =  param_reg_info[param].size;
+    if (qsfp_priv_data->eeprom_version >= QSFP28_DD_EEPROM_VERSION_3) {
+        offset = param_reg_info_qsfp28_dd_r3[param].offset;
+        size = param_reg_info_qsfp28_dd_r3[param].size;
+    } else {
+        offset = param_reg_info[param].offset;
+        size =  param_reg_info[param].size;
+    }
 
     if( (offset == 0) && (size == 0) ) {
 
@@ -1406,9 +1648,15 @@ t_std_error sdi_qsfp_vendor_info_get(sdi_resource_hdl_t resource_hdl,
     do {
         std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
 
-        offset = vendor_reg_info[vendor_info_type].offset;
-        data_len = vendor_reg_info[vendor_info_type].size;
-        printable = vendor_reg_info[vendor_info_type].printable;
+        if (qsfp_priv_data->eeprom_version >= QSFP28_DD_EEPROM_VERSION_3) {
+            offset = vendor_reg_info_qsfp28_dd_r3[vendor_info_type].offset;
+            data_len = vendor_reg_info_qsfp28_dd_r3[vendor_info_type].size;
+            printable = vendor_reg_info_qsfp28_dd_r3[vendor_info_type].printable;
+        } else {
+            offset = vendor_reg_info[vendor_info_type].offset;
+            data_len = vendor_reg_info[vendor_info_type].size;
+            printable = vendor_reg_info[vendor_info_type].printable;
+        }
 
         /* Input buffer size should be greater than or equal to data len*/
         STD_ASSERT(size >= data_len);
@@ -1646,6 +1894,8 @@ t_std_error sdi_qsfp_module_monitor_get (sdi_resource_hdl_t resource_hdl,
     sdi_device_hdl_t qsfp_device = NULL;
     qsfp_device_t *qsfp_priv_data = NULL;
     t_std_error rc = STD_ERR_OK;
+    int temp_offset = QSFP_DD_TEMPERATURE_OFFSET;
+    int volt_offset = QSFP_DD_VOLTAGE_OFFSET;
     uint8_t temp_buf[2] = { 0 };
     uint8_t volt_buf[2] = { 0 };
 
@@ -1655,6 +1905,17 @@ t_std_error sdi_qsfp_module_monitor_get (sdi_resource_hdl_t resource_hdl,
     qsfp_device = (sdi_device_hdl_t)resource_hdl;
     qsfp_priv_data = (qsfp_device_t *)qsfp_device->private_data;
     STD_ASSERT(qsfp_priv_data != NULL);
+
+    if (qsfp_priv_data->eeprom_version >= QSFP28_DD_EEPROM_VERSION_3 ){
+        temp_offset = QSFP28_DD_R3_TEMPERATURE_OFFSET;
+        volt_offset = QSFP28_DD_R3_VOLTAGE_OFFSET;
+    } else if (qsfp_priv_data->eeprom_version < QSFP28_DD_EEPROM_VERSION_2) {
+        temp_offset = QSFP_TEMPERATURE_OFFSET;
+        volt_offset = QSFP_DD_VOLTAGE_OFFSET;
+    } else {
+        temp_offset = QSFP28_DD_R2_TEMPERATURE_OFFSET;
+        volt_offset = QSFP28_DD_R2_VOLTAGE_OFFSET;
+    }
 
     if (qsfp_priv_data->mod_type == QSFP_QSA_ADAPTER) {
         return sdi_sfp_module_monitor_get(qsfp_priv_data->sfp_device,
@@ -1673,7 +1934,7 @@ t_std_error sdi_qsfp_module_monitor_get (sdi_resource_hdl_t resource_hdl,
         {
             case SDI_MEDIA_TEMP:
                 rc = sdi_smbus_read_word(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
-                        QSFP_TEMPERATURE_OFFSET, (uint16_t *)temp_buf,
+                        temp_offset, (uint16_t *)temp_buf,
                         SDI_I2C_FLAG_NONE);
                 if (rc != STD_ERR_OK){
                     SDI_DEVICE_ERRMSG_LOG("qsfp smbus read failed at addr : %d ",
@@ -1683,7 +1944,7 @@ t_std_error sdi_qsfp_module_monitor_get (sdi_resource_hdl_t resource_hdl,
 
             case SDI_MEDIA_VOLT:
                 rc = sdi_smbus_read_word(qsfp_device->bus_hdl,
-                        qsfp_device->addr.i2c_addr, QSFP_VOLTAGE_OFFSET,
+                        qsfp_device->addr.i2c_addr, volt_offset,
                         (uint16_t *)volt_buf, SDI_I2C_FLAG_NONE);
                 if (rc != STD_ERR_OK){
                     SDI_DEVICE_ERRMSG_LOG("qsfp smbus read failed at addr : %d ",
@@ -1914,6 +2175,13 @@ t_std_error sdi_qsfp_feature_support_status_get (sdi_resource_hdl_t resource_hdl
         if (rc != STD_ERR_OK){
             break;
         }
+
+        rc = sdi_is_software_controlled_power_mode_supported(qsfp_device,
+                        &feature_support->qsfp_features.software_controlled_power_mode_status);
+        if (rc != STD_ERR_OK){
+            break;
+        }
+
     }while(0);
 
     sdi_qsfp_module_deselect(qsfp_priv_data);
@@ -2430,6 +2698,10 @@ t_std_error sdi_qsfp_module_init (sdi_resource_hdl_t resource_hdl, bool pres)
             if (identifier == 0x18) {
 
                 uint8_t eeprom_version = 0;
+                uint8_t datapath_state = 0;
+                uint8_t offset = QSFP28_DD_DATAPATH_POWERUP_OFFSET;
+                uint8_t page   = SDI_MEDIA_PAGE_DEFAULT;
+
                 rc = sdi_smbus_read_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
                     QSFP28_DD_EEPROM_VERSION_OFFSET, &eeprom_version, SDI_I2C_FLAG_NONE);
                 if (rc != STD_ERR_OK) {
@@ -2437,17 +2709,37 @@ t_std_error sdi_qsfp_module_init (sdi_resource_hdl_t resource_hdl, bool pres)
                     qsfp_device->alias, rc);
                 }
 
-                if (eeprom_version == QSFP28_DD_EEPROM_VERSION_2) {
-                    SDI_DEVICE_TRACEMSG_LOG("Found media with rev 0.2 QSFP28-DD eeprom on %s",
-                        qsfp_device->alias);
+                qsfp_priv_data->eeprom_version = eeprom_version;
+                if (eeprom_version == QSFP28_DD_EEPROM_VERSION_3){
+                    offset = QSFP28_DD_DATAPATH_POWERUP_OFFSET_REV3;
+                    page = SDI_MEDIA_PAGE_16;
+                }
+
+                rc = sdi_smbus_read_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
+                    QSFP28_DD_EEPROM_VERSION_OFFSET, &eeprom_version, SDI_I2C_FLAG_NONE);
+                if (rc != STD_ERR_OK) {
+                    SDI_DEVICE_ERRMSG_LOG("Unable to read QSFP28-DD %s eeprom version. rc: %d ",
+                    qsfp_device->alias, rc);
+                }
+
+                if (eeprom_version >= QSFP28_DD_EEPROM_VERSION_2) {
+                    SDI_DEVICE_TRACEMSG_LOG("Found media with rev %x QSFP28-DD eeprom on %s",
+                        eeprom_version, qsfp_device->alias);
 
                     std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
 
                     SDI_DEVICE_TRACEMSG_LOG("Attempting to powerup datapath on %s",
                         qsfp_device->alias);
 
+                    if (STD_ERR_OK != sdi_qsfp_page_select(qsfp_device, page)){
+                        SDI_DEVICE_TRACEMSG_LOG("Page select failed for module %s",
+                                       " when attempting datapath powerup", qsfp_device->alias);
+                    }
+
+                    std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
+
                     rc = sdi_smbus_write_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
-                              QSFP28_DD_DATAPATH_POWERUP_OFFSET, QSFP28_DD_DATAPATH_POWERUP_VALUE, SDI_I2C_FLAG_NONE);
+                              offset, QSFP28_DD_DATAPATH_POWERUP_VALUE, SDI_I2C_FLAG_NONE);
                     if (rc != STD_ERR_OK) {
                         SDI_DEVICE_ERRMSG_LOG("Unable to write datapath powerup byte to QSFP28-DD %s eeprom version. rc: %d ",
                             qsfp_device->alias, rc);
@@ -2455,16 +2747,33 @@ t_std_error sdi_qsfp_module_init (sdi_resource_hdl_t resource_hdl, bool pres)
                     std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
 
                     rc = sdi_smbus_read_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
-                        QSFP28_DD_DATAPATH_POWERUP_OFFSET, &eeprom_version, SDI_I2C_FLAG_NONE);
+                        offset, &datapath_state, SDI_I2C_FLAG_NONE);
                     if (rc != STD_ERR_OK) {
                         SDI_DEVICE_ERRMSG_LOG("Unable to read QSFP28-DD %s datapath powerup byte. rc: %d ",
                             qsfp_device->alias, rc);
                     }
-                    if ((eeprom_version != QSFP28_DD_DATAPATH_POWERUP_VALUE) | (rc != STD_ERR_OK)) {
+                    if ((datapath_state != QSFP28_DD_DATAPATH_POWERUP_VALUE) | (rc != STD_ERR_OK)) {
                         SDI_DEVICE_ERRMSG_LOG("Datapath powerup failed. Read back %u,  error %u",
-                            qsfp_device->alias, eeprom_version, rc);
+                            qsfp_device->alias, datapath_state, rc);
+                    }
+                    std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
+                    if (STD_ERR_OK != sdi_qsfp_page_select(qsfp_device, SDI_MEDIA_PAGE_DEFAULT)){
+                        SDI_DEVICE_TRACEMSG_LOG("Page select failed for module %s when resetting page to default"
+                                             , qsfp_device->alias);
                     }
                 }
+            } else { /* QSFP+/QSFP28. Will handle QSFP28-DD in future */
+                sdi_qsfp_module_deselect(qsfp_priv_data);
+                if (sdi_qsfp_media_max_power_get(resource_hdl, &(qsfp_priv_data->module_info.max_module_power_mw),
+                        &(qsfp_priv_data->module_info.software_controlled_power_mode)) != STD_ERR_OK) {
+                    SDI_DEVICE_ERRMSG_LOG("Unable to get media max power for module %s", qsfp_device->alias);
+                    qsfp_priv_data->module_info.max_module_power_mw = SDI_MEDIA_NO_MAX_POWER_DEFINED;
+                    qsfp_priv_data->module_info.software_controlled_power_mode =  false;
+                } else if (qsfp_priv_data->module_info.software_controlled_power_mode) {
+                    sdi_qsfp_media_force_power_mode_set(resource_hdl, false);
+                    /* Put all in low power mode first */
+                }
+                return rc;
             }
         }
 
@@ -2688,9 +2997,8 @@ t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
 
     rc = sdi_pin_group_acquire_bus(qsfp_priv_data->mod_reset_hdl);
     if (rc != STD_ERR_OK){
-        SDI_DEVICE_ERRMSG_LOG("COuld not acquire bus when attempting module reset for QSA detection");
+        SDI_DEVICE_ERRMSG_LOG("Could not acquire bus when attempting module reset for QSA detection");
         *qsa_adapter = SDI_QSA_ADAPTER_UNKNOWN;
-        sdi_pin_group_release_bus(qsfp_priv_data->mod_reset_hdl);
         return rc;
     }
 
@@ -2715,7 +3023,6 @@ t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
         SDI_DEVICE_ERRMSG_LOG("QSFP module selection failed when attempting QSA info get for %s",
              qsfp_device->alias);
         *qsa_adapter = SDI_QSA_ADAPTER_UNKNOWN;
-        sdi_qsfp_module_deselect(qsfp_priv_data);
         return rc;
     }
 
@@ -2744,7 +3051,6 @@ t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
     rc = sdi_pin_group_acquire_bus(qsfp_priv_data->mod_reset_hdl);
     if (rc != STD_ERR_OK){
         SDI_DEVICE_ERRMSG_LOG("Could not acquire bus when attempting module reset for QSA detection");
-        sdi_pin_group_release_bus(qsfp_priv_data->mod_reset_hdl);
         return rc;
     }
 

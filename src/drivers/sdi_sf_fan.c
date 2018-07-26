@@ -83,7 +83,7 @@ static t_std_error sdi_sf_fan_chip_init(sdi_device_hdl_t device_hdl);
  * speed[out]       - pointer to a buffer to get the fan speed
  * Return           - STD_ERR_OK for success or error in case of failure
  */
-static t_std_error sdi_sf_fan_speed_get(void *resource_hdl, uint_t *speed)
+static t_std_error sdi_sf_fan_speed_get(void *real_resource_hdl, void *resource_hdl, uint_t *speed)
 {
     uint8_t low_byte = 0, high_byte = 0;
     sdi_device_hdl_t chip = NULL;
@@ -115,12 +115,14 @@ static t_std_error sdi_sf_fan_speed_get(void *resource_hdl, uint_t *speed)
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("sdi_sf_tmp sf io bus read high byte failed with rc %d\n", rc);
+        sdi_sf_io_release_bus(chip->bus_hdl);
         return rc;
     }
     rc = sdi_sf_io_bus_read_byte(chip->bus_hdl,(offset + 1), &low_byte);
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("sdi_sf_tmp sf io bus read low byte failed with rc %d\n", rc);
+        sdi_sf_io_release_bus(chip->bus_hdl);
         return rc;
     }
 

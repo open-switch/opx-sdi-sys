@@ -182,6 +182,14 @@ typedef struct {
     t_std_error (*media_qsa_adapter_type_get)(sdi_resource_hdl_t resource_hdl,
             sdi_qsa_adapter_type_t* qsa_adapter);
 
+    /* For obtaining the port info */
+    t_std_error (*media_port_info_get)(sdi_resource_hdl_t resource_hdl,
+            sdi_media_port_info_t* port_info);
+
+    /* For obtaining the module info */
+    t_std_error (*media_module_info_get)(sdi_resource_hdl_t resource_hdl,
+            sdi_media_module_info_t* module_info);
+
 } media_ctrl_t;
 
 #endif

@@ -39,6 +39,7 @@
 #include "sdi_bus_attr.h"
 #include "std_utils.h"
 #include "std_time_tools.h"
+#include "std_system.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -247,7 +248,6 @@ static void i2c_reset(const char *func, int fd, sdi_smbus_operation_t operation,
     return;
 }
 
-
 /**
  * sdi_sys_smbus_execute
  * Execute the I2C SMBUS transaction by issuing an ioctl to kernel smbus driver
@@ -282,11 +282,15 @@ static t_std_error sdi_sys_smbus_execute(int i2cdev_fd,
     std_usleep(SDI_IIC_WAIT_TIME);
 
     if (error != STD_ERR_OK) {
-        error = SDI_DEVICE_ERRNO;
         SDI_DEVICE_ERRMSG_LOG("%s:%d smbus transaction on i2cdev_fd %d,"
-                "operation %d command %d size %d data %p failed %d\n",
+                "operation %d command %d size %d data %p failed with error %d and errno:0x%x\n",
                 __FUNCTION__, __LINE__, i2cdev_fd, operation, commandbuf, data_type,
-                data, error);
+                data, error, errno); 
+        error = SDI_DEVICE_ERRNO;
+        if ((errno == EIO) || (errno == ETIMEDOUT)) {
+            /* attempt to recover from i2c bus hang if IO error or connection timedout*/
+            i2c_reset(__FUNCTION__, i2cdev_fd, operation, data_type, commandbuf);
+        }
     } else if(retry_count != SDI_MAX_IIC_RETRY) {
         SDI_DEVICE_ERRMSG_LOG("%s:%d smbus transaction on i2cdev_fd %d, operation %d command %d size %d data %p is succeeded after %u retries\n",
                               __FUNCTION__, __LINE__, i2cdev_fd, operation, commandbuf, data_type, data, (SDI_MAX_IIC_RETRY - retry_count));

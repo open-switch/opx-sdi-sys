@@ -30,6 +30,7 @@
 #include "std_error_codes.h"
 #include "std_assert.h"
 #include "std_time_tools.h"
+#include "sdi_platform_util.h"
 
 /* Magic number description not given in appnote from Marvell
    an-2036 app note from Mavell give below magic value to enable
@@ -82,15 +83,14 @@ t_std_error sdi_sfp_phy_read(sdi_device_hdl_t sfp_device,int reg_offset, uint16_
 
     rc = sdi_smbus_read_word(sfp_device->bus_hdl,sfp_phy_i2c_addr,reg_offset,
             (uint16_t *)word_buf, SDI_I2C_FLAG_NONE);
-
     SDI_DEVICE_TRACEMSG_LOG("SMBUS read #offset %x and #data %x\n", reg_offset, *reg_data);
     if (rc != STD_ERR_OK) {
         SDI_DEVICE_ERRMSG_LOG("sfp smbus read failed at addr : %x reg : %x for %s rc : %d",
                 SFP_PHY_I2C_ADDR, reg_offset, sfp_device->alias, rc);
         return rc;
     }
-
-    *reg_data = ( (word_buf[0] << 8) | (word_buf[1]) );
+ 
+    *reg_data = convert_be_to_uint16(word_buf);
     return rc;
 }
 

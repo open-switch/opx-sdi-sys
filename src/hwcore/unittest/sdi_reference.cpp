@@ -48,6 +48,8 @@ sdi_resource_type_t toResourceType(string resource_name)
     rmap["SDI_RESOURCE_ENTITY_INFO"]=SDI_RESOURCE_ENTITY_INFO;
     rmap["SDI_RESOURCE_UPGRADABLE_PLD"]=SDI_RESOURCE_UPGRADABLE_PLD;
     rmap["SDI_RESOURCE_MEDIA"]=SDI_RESOURCE_MEDIA;
+    rmap["SDI_RESOURCE_EXT_CONTROL"]=SDI_RESOURCE_EXT_CONTROL;
+
     map<string,sdi_resource_type_t>::iterator it;
     it=rmap.find(resource_name);
     if(it->second<STD_ERR_OK)

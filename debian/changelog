@@ -1,3 +1,18 @@
+opx-sdi-sys (4.21.0+vxlan1) unstable; urgency=medium
+
+  * Update: Use std_sys_execve_command instead of system command
+  * Bugfix: sdi endian issue
+  * Update: Add write 16bit to byte array functionality
+  * Update: Remove redundant module deselect and bus release
+  * Update: Add release of iobus mutex to error case return
+  * Update: Media driver to support basic qsfp28-dd revisions
+  * Update: Mechanism to recover from i2hang
+  * Update: Change err log to trace log for sfp missing port power cfg
+  * Bugfix: Issue in reading eeprom info as part of presence poll
+  * Bugfix: Issue in sensor key generation while adding device from driver init
+
+ -- Dell EMC <ops-dev@lists.openswitch.net>  Wed, 25 Jul 2018 15:00:00 -0800
+
 opx-sdi-sys (4.21.0) unstable; urgency=medium
 
   * Bugfix: Fantray presence not detected properly

@@ -113,6 +113,8 @@ void sdi_db_reinit_database(void);
 #define TABLE_MEDIA_THRESHOLD   "Media_Monitor_Thresholds"
 /** NVRAM table */
 #define TABLE_NVRAM             "NVRAM"
+/** Writable External Control */
+#define TABLE_EXT_CTRL          "External_Ctrl"
 
 /**
  * @}
@@ -192,6 +194,8 @@ void sdi_db_reinit_database(void);
 /**
  * @}
  */
+
+#define TABLE_EXT_CTRL_VAL "Value"
 
 /** @defgroup sdi_table_fan SDI VM DB Fan table fields
  *

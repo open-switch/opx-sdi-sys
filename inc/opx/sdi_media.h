@@ -94,6 +94,22 @@ extern "C" {
 
 
 /**
+ * @defgroup sdi media power info 
+ * @ingroup sdi_media_api
+ * @{
+ */
+
+/**
+ * @def SDI_MEDIA_NO_MAX_POWER_DEFINED
+ * Max power for media is undef
+ */
+#define SDI_MEDIA_NO_MAX_POWER_DEFINED -1
+/**
+ * @}
+ */
+
+
+/**
  * @defgroup sdi_media_address_page_select. SDI media device address and page select values
  * @ingroup sdi_media_api
  * @{
@@ -314,6 +330,8 @@ typedef enum {
     /* Media EEPROM page 3 */
     SDI_MEDIA_PAGE_03                      =  3,
 
+    /* Media EEPROM page 16 */
+    SDI_MEDIA_PAGE_16                      = 16,
     /* Media EEPROM default page when no page is selected */
     SDI_MEDIA_PAGE_DEFAULT                 = SDI_MEDIA_PAGE_00,
 } sdi_media_page_t;
@@ -1089,6 +1107,7 @@ typedef struct {
     bool rate_select_status;
     bool tx_control_support_status;
     bool paging_support_status;
+    bool software_controlled_power_mode_status;
 } sdi_qsfp_supported_feature_t;
 
 /**
@@ -1109,6 +1128,19 @@ typedef union {
     sdi_qsfp_supported_feature_t qsfp_features;
     sdi_sfp_supported_feature_t sfp_features;
 } sdi_media_supported_feature_t;
+
+typedef struct {
+    uint_t max_port_speed_mbps;
+    uint_t port_density;
+    int    max_port_power_mw;
+} sdi_media_port_info_t;
+
+typedef struct {
+    uint_t module_density;
+    int    eeprom_map_version;
+    bool   software_controlled_power_mode;
+    int    max_module_power_mw;
+} sdi_media_module_info_t;
 
 /**
  * @brief Get the presence status of a specific media
@@ -1527,11 +1559,13 @@ t_std_error sdi_media_ext_rate_select (sdi_resource_hdl_t resource_hdl, uint_t c
 
 t_std_error sdi_media_wavelength_set (sdi_resource_hdl_t resource_hdl, float value);
 
-/*
- * @brief Set wavelength for tunable media
- * @param[in]  - resource_hdl - handle to the front panel port
- * @param[in]  - wavelength value
+/**
+ * @brief API to get QSA adapter type
+ * resource_hdl[in] - Handle of the resource
+ * sdi_qsa_adapter_type_t*[out] - adapter type obtained
+ * return           - t_std_error
  */
+
 t_std_error sdi_media_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
                                    sdi_qsa_adapter_type_t* qsa_adapter);
 

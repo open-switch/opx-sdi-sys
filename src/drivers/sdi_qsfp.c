@@ -122,6 +122,25 @@ static t_std_error sdi_qsfp_module_control(sdi_resource_hdl_t resource_hdl,
     switch(ctrl_type)
     {
         case SDI_MEDIA_LP_MODE:
+
+
+            if ((qsfp_priv_data->module_info.max_module_power_mw > qsfp_priv_data->port_info.max_port_power_mw)
+                                                & (!enable)){
+                SDI_DEVICE_ERRMSG_LOG("FATAL: %s media max power (%umW) exceeds port max power (%umW). Cannot enable high power on media.",
+                            qsfp_device->alias, qsfp_priv_data->module_info.max_module_power_mw, qsfp_priv_data->port_info.max_port_power_mw);
+                return SDI_DEVICE_ERRCODE(EOPNOTSUPP);
+
+            }
+            if (qsfp_priv_data->module_info.software_controlled_power_mode) {
+                rc = sdi_qsfp_media_force_power_mode_set(resource_hdl, !enable);
+                if (rc == STD_ERR_OK){
+                    SDI_DEVICE_TRACEMSG_LOG("Power class set on module %s %umW, rc %u", qsfp_device->alias,
+                        qsfp_priv_data->module_info.max_module_power_mw, rc);
+
+                } else if (rc != SDI_DEVICE_ERRCODE(EOPNOTSUPP)) {
+                    SDI_DEVICE_ERRMSG_LOG("Error when powering up module %s . Module may not work as expected", qsfp_device->alias);
+                }
+            }
             rc = sdi_pin_group_acquire_bus(qsfp_priv_data->mod_lpmode_hdl);
             if (rc != STD_ERR_OK){
                 return rc;
@@ -272,6 +291,20 @@ static t_std_error sdi_qsfp_module_control_status_get(sdi_resource_hdl_t resourc
     return rc;
 }
 
+/* Not yet implemented */
+
+t_std_error sdi_qsfp_module_info_get (sdi_resource_hdl_t resource_hdl,
+                                 sdi_media_module_info_t* module_info)
+{
+    return STD_ERR_OK;
+}
+t_std_error sdi_qsfp_port_info_get (sdi_resource_hdl_t resource_hdl,
+                                 sdi_media_port_info_t* port_info)
+{
+    return STD_ERR_OK;
+}
+
+
 /* Callback handlers for QSFP */
 static media_ctrl_t qsfp_media = {
     .presence_get = sdi_qsfp_presence_get,
@@ -307,7 +340,10 @@ static media_ctrl_t qsfp_media = {
     .media_phy_power_down_enable = sdi_qsfp_phy_power_down_enable, /* Added for QSA support */
     .ext_rate_select = sdi_qsfp_ext_rate_select,
     .media_phy_serdes_control = sdi_qsfp_phy_serdes_control,         /* Added for QSA support */
-    .media_qsa_adapter_type_get = sdi_qsfp_qsa_adapter_type_get   /* QSA info get */
+    .media_qsa_adapter_type_get = sdi_qsfp_qsa_adapter_type_get,   /* QSA info get */
+    .media_port_info_get = sdi_qsfp_port_info_get,
+    .media_module_info_get = sdi_qsfp_module_info_get
+
 };
 
 /*
@@ -455,6 +491,32 @@ static t_std_error sdi_qsfp_register (std_config_node_t node, void *bus_handle,
         qsfp_data->delay = strtoul(node_attr, NULL, 0);
     } else {
         qsfp_data->delay = SDI_MEDIA_NO_DELAY;
+    }
+
+    node_attr = std_config_attr_get(node, SDI_MEDIA_MAX_PORT_POWER_MILLIWATTS);
+
+    if (node_attr == NULL){
+        switch (qsfp_data->capability){
+            case SDI_MEDIA_SPEED_40G:
+                qsfp_data->port_info.max_port_power_mw = SDI_MEDIA_DEFAULT_QSFP_MAX_PORT_POWER_MILLIWATTS;
+                break;
+            case SDI_MEDIA_SPEED_100G:
+                qsfp_data->port_info.max_port_power_mw = SDI_MEDIA_DEFAULT_QSFP28_MAX_PORT_POWER_MILLIWATTS;
+                break;
+            case SDI_MEDIA_SPEED_200G:
+                qsfp_data->port_info.max_port_power_mw = SDI_MEDIA_DEFAULT_QSFP28_DD_MAX_PORT_POWER_MILLIWATTS;
+                break;
+            default:
+                qsfp_data->port_info.max_port_power_mw = SDI_MEDIA_DEFAULT_QSFP_MAX_PORT_POWER_MILLIWATTS;
+                break;
+        }
+
+        SDI_DEVICE_TRACEMSG_LOG("Could not find max port power in config file for  %s"
+            "Defaulting to %u mW max port power", dev_hdl->alias,
+                 qsfp_data->port_info.max_port_power_mw);
+
+    } else {
+        qsfp_data->port_info.max_port_power_mw = strtoul(node_attr, NULL, 0);
     }
 
     dev_hdl->private_data = (void *)qsfp_data;

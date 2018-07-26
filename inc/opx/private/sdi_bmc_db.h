@@ -77,7 +77,10 @@ void sdi_bmc_db_entity_dump (void);
  * Add sensor record to a sensor database using entity id, instance and sensor Id.
  */
 sdi_bmc_sensor_t *sdi_bmc_db_sensor_add (uint32_t id, uint32_t instance, char *name);
-
+/*
+ * Add sensor record to a sensor database using sensor id.
+ */
+sdi_bmc_sensor_t *sdi_bmc_db_sensor_add_by_name (char *name);
 /*
  * Fetch sensor record from a sensor database using entity id, instance and sensor Id.
  */

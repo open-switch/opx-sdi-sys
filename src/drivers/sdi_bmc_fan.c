@@ -52,7 +52,7 @@ static t_std_error sdi_bmc_fan_chip_init(sdi_device_hdl_t device_hdl);
  * speed[out]       - pointer to a buffer to get the fan speed
  * Return           - STD_ERR_OK for success or error in case of failure
  */
-static t_std_error sdi_bmc_fan_speed_get(void *resource_hdl, uint_t *speed)
+static t_std_error sdi_bmc_fan_speed_get(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t *speed)
 {
     sdi_device_hdl_t chip = NULL;
     t_std_error rc = STD_ERR_OK;

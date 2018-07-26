@@ -28,9 +28,12 @@
  *
  *********************************************************************************************/
 
+#include "sdi_device_common.h"
 #include "sdi_pmbus_dev.h"
+#include "sdi_fan_internal.h"
 #include "std_assert.h"
 #include <stdlib.h>
+#include <string.h>
 
 sdi_pmbus_sensor_t sdi_pmbus_sensor_s6k[] = {
     {SDI_PMBUS_TEMPERATURE_1, SDI_PMBUS_LINEAR, "Temperature-1"},
@@ -66,6 +69,7 @@ sdi_driver_t s6k_psu_entry = {
  * Return - STD_ERR_OK, this function is kept as non void as the driver table
  * function pointer
  */
+
 t_std_error sdi_s6k_psu_register(std_config_node_t node, void *bus_handle,
                                  sdi_device_hdl_t* device_hdl)
 {
@@ -80,6 +84,70 @@ t_std_error sdi_s6k_psu_register(std_config_node_t node, void *bus_handle,
 
     sdi_pmbus_device->max_sensors = SDI_MAX_PMBUS_SENSORS_S6K;
     sdi_pmbus_device->sdi_pmbus_sensors = sdi_pmbus_sensor_s6k;
+
+    /* Read and store fan speed RPM-to-percent map, if any */
+    std_config_node_t fan_node;
+    for (fan_node = std_config_get_child(node); fan_node != 0; fan_node = std_config_next_node(fan_node)) {
+        const char *s = std_config_name_get(fan_node);
+        if (strcmp(s, "fan") != 0) {
+            SDI_DEVICE_ERRMSG_LOG("Invalid tag, expected \"fan\", got \"%s\" -- skipping\n", s);
+            continue;
+        }
+        
+        if ((s = std_config_attr_get(fan_node, "ppid")) == 0) {
+            SDI_DEVICE_ERRMSG_LOG("No ppid attribute for fan tag -- skipping\n");
+            continue;
+        }
+
+        regex_t re[1];
+        if (regcomp(re, s, REG_EXTENDED | REG_NOSUB) != 0) {
+            SDI_DEVICE_ERRMSG_LOG("Invalid regexp for ppid -- skipping\n");
+            continue;
+        }
+
+        struct sdi_fan_speed_ppid_map *p = (struct sdi_fan_speed_ppid_map *) calloc(1, sizeof(*p));
+        if (p == 0) {
+            SDI_DEVICE_ERRMSG_LOG("Failed to allocate pmbus speed map -- skipping\n");
+            continue;
+        }
+        *p->ppid_pat = *re;
+        p->next = sdi_pmbus_device->fan_speed_map;
+        sdi_pmbus_device->fan_speed_map = p;
+
+        std_config_node_t speed_node;
+        for (speed_node = std_config_get_child(fan_node);
+             speed_node != 0;
+             speed_node = std_config_next_node(speed_node)
+             ) {
+            s = std_config_name_get(speed_node);
+            if (strcmp(s, "speed") != 0) {
+                SDI_DEVICE_ERRMSG_LOG("Invalid tag, expected \"speed\", got \"%s\" -- skipping\n", s);
+                continue;
+            }
+
+            if ((s = std_config_attr_get(speed_node, "rpm")) == 0) {
+                SDI_DEVICE_ERRMSG_LOG("No rpm attribute for speed tag -- skipping\n");
+                continue;
+            }
+            uint_t rpm = strtoul(s, NULL, 0);
+
+            if ((s = std_config_attr_get(speed_node, "percent")) == 0) {
+                SDI_DEVICE_ERRMSG_LOG("percent rpm attribute for speed tag -- skipping\n");
+                continue;
+            }
+            uint_t pct = strtoul(s, NULL, 0);
+
+            struct sdi_fan_speed_map_entry *m = (struct sdi_fan_speed_map_entry *) calloc(1, sizeof(*m));
+            if (m == 0) {
+                SDI_DEVICE_ERRMSG_LOG("Failed to allocate pmbus speed map entry -- skipping\n");
+                continue;
+            }
+            m->rpm = rpm;
+            m->pct = pct;
+            m->next = p->speeds;
+            p->speeds = m;
+        }
+    }
 
     sdi_pmbus_dev_register(node, bus_handle, sdi_pmbus_device, &s6k_psu_entry, device_hdl);
 

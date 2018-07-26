@@ -45,7 +45,8 @@ libopx_sdi_sys_la_SOURCES = \
         src/hwcore/sdi_host_system.c \
         src/hwcore/sdi_media.c \
         src/hwcore/sdi_power_monitor.c \
-        src/hwcore/sdi_led.c
+        src/hwcore/sdi_led.c \
+        src/hwcore/sdi_ext_ctrl.c
 
 libopx_sdi_sys_la_LIBADD = libopx_sdi_framework.la -lopx_common -lopx_logging
 libopx_sdi_sys_la_LDFLAGS = -version-info 1:1:0 -shared $(LD_HARDEN_FLAGS)
@@ -99,7 +100,10 @@ libopx_sdi_device_drivers_la_SOURCES = \
         src/drivers/sdi_bmc_fan.c \
         src/drivers/sdi_bmc_io_bus.c \
         src/drivers/sdi_bmc_tmp.c \
-        src/drivers/sdi_fpga_pci_bus.c
+        src/drivers/sdi_fpga_pci_bus.c \
+        src/drivers/sdi_comm_dev_ext_ctrl.c \
+        src/drivers/sdi_platform_util.c \
+        src/drivers/sdi_sf_ext_ctrl.c
         
 
 libopx_sdi_device_drivers_la_LIBADD = libopx_sdi_framework.la -lopx_common -lopx_logging -lz -lm -lpthread -lOpenIPMI -lOpenIPMIposix
@@ -127,7 +131,8 @@ libopx_sdi_sys_vm_la_SOURCES = \
         src/vmcore/sdi_vm_media.c \
         src/vmcore/sdi_vm_nvram.c \
         src/vmcore/sdi_vm_sys.c \
-        src/vmcore/sdi_vm_thermal.c
+        src/vmcore/sdi_vm_thermal.c \
+        src/vmcore/sdi_vm_ext_ctrl.c
         
 libopx_sdi_sys_vm_la_CPPFLAGS = -I$(top_srcdir)/inc/opx  -I$(top_srcdir)/inc/opx/private -I$(includedir)/opx -fpic $(COMMON_HARDEN_FLAGS) $(C_HARDEN_FLAGS)
 libopx_sdi_sys_vm_la_LDFLAGS = -version-info 1:1:0 -shared $(LD_HARDEN_FLAGS)

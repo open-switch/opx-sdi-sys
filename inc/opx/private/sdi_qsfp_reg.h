@@ -55,6 +55,7 @@ typedef enum {
     QSFP_TX_CONTROL_OFFSET          = 86,
     QSFP_RX_EXT_RATE_SELECT_OFFSET  = 87,
     QSFP_TX_EXT_RATE_SELECT_OFFSET  = 88,
+    QSFP_POWER_CLASS_CONTROL_OFFSET = 93,
     QSFP_CDR_CONTROL_OFFSET         = 98,
     QSFP_FREE_SIDE_DEV_PROP_OFFSET  = 113,
     QSFP_PAGE_SELECT_BYTE_OFFSET    = 127,
@@ -155,6 +156,29 @@ typedef enum {
     QSFP_DD_TX_CONTROL_OFFSET                    = 84,
     QSFP_DD_TX_CDR_CONTROL_OFFSET                = 90,
     QSFP_DD_RX_CDR_CONTROL_OFFSET                = 91,
+
+
+    /* QSFP28-DD Rev 2 offsets */
+    QSFP28_DD_R2_TEMPERATURE_OFFSET            = 26,
+    QSFP28_DD_R2_VOLTAGE_OFFSET                = 30,
+
+    /* QSFP28-DD Rev 3 offsets */
+    QSFP28_DD_R3_IDENTIFIER_OFFSET             = 0,
+    QSFP28_DD_R3_TEMPERATURE_OFFSET            = 14,
+    QSFP28_DD_R3_VOLTAGE_OFFSET                = 16,
+
+    QSFP28_DD_R3_VENDOR_NAME_OFFSET            = 129,
+    QSFP28_DD_R3_VENDOR_OUI_OFFSET             = 145,
+    QSFP28_DD_R3_VENDOR_PN_OFFSET              = 148,
+    QSFP28_DD_R3_VENDOR_REVISION_OFFSET        = 164,
+    QSFP28_DD_R3_VENDOR_SN_OFFSET              = 166,
+    QSFP28_DD_R3_VENDOR_DATE_OFFSET            = 182,
+
+    QSFP28_DD_R3_LENGTH_CABLE_ASSEMBLY_OFFSET  = 202,
+    QSFP28_DD_R3_CONNECTOR_OFFSET              = 203,
+
+    QSFP28_DD_EEPROM_VERSION_OFFSET            = 0x01,
+    QSFP28_DD_REV3_SPECIAL_TYPE_OFFSET         = 0x55,
 
 } qsfp_dd_reg_offset_t;
 

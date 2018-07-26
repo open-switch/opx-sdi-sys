@@ -39,7 +39,6 @@ static sdi_i2c_addr_t device_i2c_addr = { .i2c_addr = COMM_DEV_I2C_ADDR, .addr_m
 static t_std_error sdi_comm_dev_driver_register(std_config_node_t node, void *bus_handle, sdi_device_hdl_t *device_hdl);
 static t_std_error sdi_comm_dev_driver_init(sdi_device_hdl_t device_hdl);
 static t_std_error sdi_comm_dev_status_check_and_clear(sdi_resource_hdl_t resource_hdl);
-static t_std_error sdi_comm_dev_reset_refresh(sdi_resource_hdl_t resource_hdl);
 
 /*
  * Generic read api for Comm_Dev I2C
@@ -533,7 +532,7 @@ static t_std_error sdi_is_buffer_ready(sdi_resource_hdl_t resource_hdl, bool *re
 /*
  * Refresh comm dev after a dynamic reset after an update
  */
-static t_std_error sdi_comm_dev_reset_refresh(sdi_resource_hdl_t resource_hdl)
+t_std_error sdi_comm_dev_reset_refresh(sdi_resource_hdl_t resource_hdl)
 {
     t_std_error rc = STD_ERR_OK;
     uint8_t     comm_dev_status[SDI_COMM_DEV_VENDOR_INTELLIGENCE_STATUS_REGISTER_SIZE] = {0};

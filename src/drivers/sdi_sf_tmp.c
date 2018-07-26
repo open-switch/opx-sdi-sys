@@ -96,6 +96,7 @@ static t_std_error sdi_sf_tmp_data_get(void *resource_hdl, uint16_t offset,
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("sdi_sf_tmp sf io bus read high byte failed with rc %d\n", rc);
+        sdi_sf_io_release_bus(chip->bus_hdl);
         return rc;
     }
     if (width == 2) {
@@ -103,6 +104,7 @@ static t_std_error sdi_sf_tmp_data_get(void *resource_hdl, uint16_t offset,
         if(rc != STD_ERR_OK)
         {
             SDI_DEVICE_ERRMSG_LOG("sdi_sf_tmp sf io bus read low byte failed with rc %d\n", rc);
+            sdi_sf_io_release_bus(chip->bus_hdl);
             return rc;
         }
     }

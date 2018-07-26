@@ -77,6 +77,8 @@ t_std_error sdi_bmc_entity_info_data_get(void *resource_hdl,
         }
     }
     sensor = tmp_res->data_sdr;
+
+    if (sensor->res.entity_info.valid != true) return SDI_DEVICE_ERRCODE(EINVAL);
     safestrncpy(entity_info->vendor_name, sensor->res.entity_info.board_manufacturer,
             sizeof(entity_info->vendor_name));
     safestrncpy(entity_info->prod_name, sensor->res.entity_info.board_product_name,
@@ -89,6 +91,20 @@ t_std_error sdi_bmc_entity_info_data_get(void *resource_hdl,
             sizeof(entity_info->hw_revision));
     safestrncpy(entity_info->ppid, sensor->res.entity_info.board_serial_number,
             sizeof(entity_info->ppid));
+
+    if (sensor->res.entity_info.air_flow == 0x0) {
+        entity_info->air_flow = SDI_PWR_AIR_FLOW_NORMAL;
+    } else {
+        entity_info->air_flow = SDI_PWR_AIR_FLOW_REVERSE;
+    }
+
+    if (sensor->res.entity_info.type == 0x0) {
+        entity_info->power_type.ac_power = 1;
+        entity_info->power_type.dc_power = 0;
+    } else {
+        entity_info->power_type.ac_power = 0;
+        entity_info->power_type.dc_power = 1;
+    }
 
     entity_info->num_fans = sensor->res.entity_info.num_fans;
     entity_info->max_speed = sensor->res.entity_info.max_speed;
@@ -142,6 +158,13 @@ t_std_error sdi_bmc_entity_info_res_register (sdi_device_hdl_t bmc_dev_hdl, sdi_
     dev_hdl->private_data = bmc_res;
     bmc_res->dev_hdl = dev_hdl;
     bmc_res->data_sdr = sdi_bmc_db_sensor_get_by_name(bmc_res->data_sdr_id);
+    if (bmc_res->data_sdr == NULL) {
+        bmc_res->data_sdr = sdi_bmc_db_sensor_add_by_name(bmc_res->data_sdr_id);
+        if (bmc_res->data_sdr == NULL) {
+            SDI_DEVICE_ERRMSG_LOG("Adding entity info in database failed(%s)", bmc_res->data_sdr_id);
+            return SDI_DEVICE_ERRCODE(EINVAL);
+        }
+    }
     bmc_res->data_sdr->res.entity_info.num_fans = bmc_res->fan_count;
     bmc_res->data_sdr->res.entity_info.max_speed = bmc_res->max_fan_speed;
     sdi_resource_add(bmc_res->resource_type, bmc_res->alias, dev_hdl, &bmc_entity_info_callback);

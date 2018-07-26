@@ -39,6 +39,7 @@
 #include "sdi_i2c_bus_api.h"
 #include "std_assert.h"
 #include "std_utils.h"
+#include "sdi_platform_util.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -61,7 +62,7 @@ typedef struct pmbus_dev_device_
 } pmbus_dev_device_t;
 
 /* Callback function to set the speed of the fan refered by resource */
-static t_std_error sdi_pmbus_dev_fan_speed_set(void *resource_hdl, uint_t fan_speed);
+static t_std_error sdi_pmbus_dev_fan_speed_set(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t fan_speed);
 
 /*
  * This is the function for resource init.
@@ -83,7 +84,7 @@ static t_std_error sdi_pmbus_dev_resource_init(void *resource_hdl, uint_t max_sp
     pmbus_dev_data->max_fan_speed = max_speed;
 
     if (pmbus_dev_data->default_fan_speed != 0) {
-        rc = sdi_pmbus_dev_fan_speed_set(resource_hdl, pmbus_dev_data->default_fan_speed);
+        rc = sdi_pmbus_dev_fan_speed_set(0, resource_hdl, pmbus_dev_data->default_fan_speed);
         if(rc != STD_ERR_OK)
             {
                 SDI_DEVICE_ERRMSG_LOG("PMBus dev fan speed set failed for sensor: %d \n",rc);
@@ -154,6 +155,7 @@ static inline int sdi_pmbus_linear_data_to_int(uint8_t user_data_msb, uint8_t us
 static t_std_error sdi_pmbus_dev_temperature_get(void *resource_hdl, int *temperature)
 {
     uint8_t buf[2] = {0};
+    uint16_t data = 0;
     sdi_device_hdl_t chip = NULL;
     sdi_pmbus_dev_t *pmbus_dev = NULL;
     uint_t sensor_index = 0;
@@ -183,7 +185,9 @@ static t_std_error sdi_pmbus_dev_temperature_get(void *resource_hdl, int *temper
     }
 
     rc = sdi_smbus_read_word(chip->bus_hdl, chip->addr.i2c_addr, pmbug_reg,
-                             (uint16_t*)&buf, pmbus_dev->pec_req);
+                             &data, pmbus_dev->pec_req);
+ 
+    write_16bit_to_bytearray_le(buf,data);
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("pmbus device read failure at addr: %x reg: %x rc: %x\n",
@@ -213,9 +217,10 @@ static t_std_error sdi_pmbus_dev_temperature_get(void *resource_hdl, int *temper
  * Return - STD_ERR_OK for success or the respective error code from i2c API
  * in case of failure
  */
-static t_std_error sdi_pmbus_dev_fan_speed_get(void *resource_hdl, uint_t *fan_speed)
+static t_std_error sdi_pmbus_dev_fan_speed_get(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t *fan_speed)
 {
     uint8_t buf[2] = {0};
+    uint16_t data = 0;
     sdi_device_hdl_t chip = NULL;
     sdi_pmbus_dev_t *pmbus_dev = NULL;
     uint_t sensor_index = 0;
@@ -249,8 +254,11 @@ static t_std_error sdi_pmbus_dev_fan_speed_get(void *resource_hdl, uint_t *fan_s
     }
 
     rc = sdi_smbus_read_word(chip->bus_hdl, chip->addr.i2c_addr, pmbug_reg,
-                             (uint16_t*)&buf, pmbus_dev->pec_req);
-    if(rc != STD_ERR_OK)
+                            &data, pmbus_dev->pec_req);
+   
+    write_16bit_to_bytearray_le(buf,data);
+       
+   if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("pmbus read failure at addr: %d reg: %d rc: %d\n",
                 chip->addr.i2c_addr.i2c_addr,pmbug_reg,rc);
@@ -271,6 +279,109 @@ static t_std_error sdi_pmbus_dev_fan_speed_get(void *resource_hdl, uint_t *fan_s
     return rc;
 }
 
+static inline uint_t abs_diff(uint_t a, uint_t b)
+{
+    return (a >= b ? a - b : b - a);
+}
+
+static uint_t sdi_pmbus_dev_fan_speed_rpm_to_pct(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t rpm)
+{
+    sdi_pmbus_dev_t *pmbus_dev = ((sdi_pmbus_resource_hdl_t*) resource_hdl)->sdi_pmbus_dev_hdl;
+    pmbus_dev_device_t *pmbus_dev_data = (pmbus_dev_device_t*) pmbus_dev->dev->private_data;
+
+    uint_t pct = 100;
+    bool pct_valid = false;
+
+    /* If PPID-based speed map defined, ... */
+    if (pmbus_dev->fan_speed_map != 0 && real_resource_hdl != 0) {
+        /* Get parent entity's PPID */
+        char *ppid = ((sdi_resource_priv_hdl_t) real_resource_hdl)->parent->entity_info.ppid;
+        /* Look for speed map that matches PPID */
+        struct sdi_fan_speed_ppid_map *p;
+        for (p = pmbus_dev->fan_speed_map; p != 0; p = p->next) {
+            if (regexec(p->ppid_pat, ppid, 0, 0, 0) == 0)  break;
+        }
+        if (p != 0) {
+            /* Found a PPID match => Look for map entry with RPM closest
+               to given RPM
+            */
+            struct sdi_fan_speed_map_entry *q, *best = 0;
+            uint_t best_error = 0;
+            for (q = p->speeds; q != 0; q = q->next) {
+                uint_t e = abs_diff(rpm, q->rpm);
+                if (best != 0 && e >= best_error)  continue;
+                best       = q;
+                best_error = e;
+            }
+            if (best != 0) {
+                pct = best->pct;
+                pct_valid = true;
+            }
+        }
+    }
+            
+    /* If map-based lookup above did not succeed, ... */
+    if (!pct_valid) {
+        /* Duty cycle */
+        if(pmbus_dev_data->max_fan_speed != 0)
+            {
+                /*Store the speed percentage to write in to the pmbus register*/
+                pct = (rpm / SDI_FAN_RPM_TO_DUTY_CYCLE(pmbus_dev_data->max_fan_speed));
+            }
+    }
+        
+    return (pct);
+}
+
+static uint_t sdi_pmbus_dev_fan_speed_pct_to_rpm(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t pct)
+{
+    sdi_pmbus_dev_t *pmbus_dev = ((sdi_pmbus_resource_hdl_t*) resource_hdl)->sdi_pmbus_dev_hdl;
+    pmbus_dev_device_t *pmbus_dev_data = (pmbus_dev_device_t*) pmbus_dev->dev->private_data;
+
+    uint_t rpm = 0;
+    bool rpm_valid = false;
+
+    /* If PPID-based speed map defined, ... */
+    if (pmbus_dev->fan_speed_map != 0 && real_resource_hdl != 0) {
+        /* Get parent entity's PPID */
+        char *ppid = ((sdi_resource_priv_hdl_t) real_resource_hdl)->parent->entity_info.ppid;
+        /* Look for speed map that matches PPID */
+        struct sdi_fan_speed_ppid_map *p;
+        for (p = pmbus_dev->fan_speed_map; p != 0; p = p->next) {
+            if (regexec(p->ppid_pat, ppid, 0, 0, 0) == 0)  break;
+        }
+        if (p != 0) {
+            /* Found a PPID match => Look for map entry with % closest
+               to given %
+            */
+            struct sdi_fan_speed_map_entry *q, *best = 0;
+            uint_t best_error = 0;
+            for (q = p->speeds; q != 0; q = q->next) {
+                uint_t e = abs_diff(pct, q->pct);
+                if (best != 0 && e >= best_error)  continue;
+                best       = q;
+                best_error = e;
+            }
+            if (best != 0) {
+                rpm = best->rpm;
+                rpm_valid = true;
+            }
+        }
+    }
+            
+    /* If map-based lookup above did not succeed, ... */
+    if (!rpm_valid) {
+        /* Duty cycle */
+        if(pmbus_dev_data->max_fan_speed != 0)
+            {
+                /*Store the speed percentage to write in to the pmbus register*/
+                rpm = (pct * pmbus_dev_data->max_fan_speed) / 100;
+            }
+    }
+        
+    return (rpm);
+}
+
 /*
  * Callback function to set the speed of the fan refered by resource
  * Parameters:
@@ -279,23 +390,21 @@ static t_std_error sdi_pmbus_dev_fan_speed_get(void *resource_hdl, uint_t *fan_s
  * Return - STD_ERR_OK for success or the respective error code from i2c API
  * in case of failure
  */
-static t_std_error sdi_pmbus_dev_fan_speed_set(void *resource_hdl, uint_t fan_speed)
+static t_std_error sdi_pmbus_dev_fan_speed_set(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t fan_speed)
 {
     uint8_t buf[2] = {0};
     sdi_device_hdl_t chip = NULL;
-    pmbus_dev_device_t* pmbus_dev_data = NULL;
     sdi_pmbus_dev_t *pmbus_dev = NULL;
     uint_t sensor_index = 0;
     uint_t pmbug_reg = 0;
     t_std_error rc = STD_ERR_OK;
-    uint16_t *pval = NULL;
+    uint16_t pval = 0;
 
     STD_ASSERT(resource_hdl != NULL);
 
     sensor_index = ((sdi_pmbus_resource_hdl_t*)resource_hdl)->sensor_index;
     pmbus_dev = ((sdi_pmbus_resource_hdl_t*)resource_hdl)->sdi_pmbus_dev_hdl;
     chip = pmbus_dev->dev;
-    pmbus_dev_data =(pmbus_dev_device_t*)chip->private_data;
 
     switch(pmbus_dev->sdi_pmbus_sensors[sensor_index].resource)
     {
@@ -316,17 +425,11 @@ static t_std_error sdi_pmbus_dev_fan_speed_set(void *resource_hdl, uint_t fan_sp
             return SDI_DEVICE_ERRCODE(EOPNOTSUPP);
     }
 
-    /* Duty cycle */
-    if(pmbus_dev_data->max_fan_speed != 0)
-    {
-        /*Store the speed percentage to write in to the pmbus register*/
-        buf[0] = (fan_speed / SDI_FAN_RPM_TO_DUTY_CYCLE(pmbus_dev_data->max_fan_speed));
-    }
-
-    pval = (uint16_t*)buf;
-
+    /*Store the speed percentage to write in to the pmbus register*/
+    buf[0] = sdi_pmbus_dev_fan_speed_rpm_to_pct(real_resource_hdl, resource_hdl, fan_speed);
+    pval = convert_le_to_uint16(buf);
     rc = sdi_smbus_write_word(chip->bus_hdl, chip->addr.i2c_addr, pmbug_reg,
-                             *pval, pmbus_dev->pec_req);
+                              pval, pmbus_dev->pec_req);
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("pmbus write failure at addr: %d reg: %d rc: %d\n",
@@ -421,7 +524,9 @@ fan_ctrl_t pmbus_dev_fan = {
         sdi_pmbus_dev_resource_init,
         sdi_pmbus_dev_fan_speed_get,
         sdi_pmbus_dev_fan_speed_set,
-        sdi_pmbus_dev_fan_status_get
+        sdi_pmbus_dev_fan_status_get,
+        sdi_pmbus_dev_fan_speed_rpm_to_pct,
+        sdi_pmbus_dev_fan_speed_pct_to_rpm
 };
 
 /*
