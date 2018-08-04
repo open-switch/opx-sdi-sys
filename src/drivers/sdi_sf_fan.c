@@ -115,12 +115,14 @@ static t_std_error sdi_sf_fan_speed_get(void *real_resource_hdl, void *resource_
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("sdi_sf_tmp sf io bus read high byte failed with rc %d\n", rc);
+        sdi_sf_io_release_bus(chip->bus_hdl);
         return rc;
     }
     rc = sdi_sf_io_bus_read_byte(chip->bus_hdl,(offset + 1), &low_byte);
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("sdi_sf_tmp sf io bus read low byte failed with rc %d\n", rc);
+        sdi_sf_io_release_bus(chip->bus_hdl);
         return rc;
     }
 

@@ -39,6 +39,7 @@
 #include "sdi_bus_attr.h"
 #include "std_utils.h"
 #include "std_time_tools.h"
+#include "std_system.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -238,11 +239,25 @@ static void i2c_reset(const char *func, int fd, sdi_smbus_operation_t operation,
     if (access(script, X_OK) != 0)  return;
 
     /* Run script with parameters describing failed I2C/SMBus operation */
-    char cmd_buf[128];
-    snprintf(cmd_buf, sizeof(cmd_buf), "%s %s %d %d %d %08x", script, func, fd, operation, data_type, commandbuf);
-    if (system(cmd_buf) == -1) {
-        SDI_DEVICE_ERRMSG_LOG("Unable to clear locked-up I2C controller");
-    }
+    char arg2[16], arg3[16], arg4[16];
+    snprintf(arg2, sizeof(arg2), "%d", operation);
+    snprintf(arg3, sizeof(arg3), "%d", data_type);
+    snprintf(arg4, sizeof(arg4), "%08x", commandbuf);
+
+    const char * args[] = {
+        script,
+        func,
+        arg2,
+        arg3,
+        arg4,
+        NULL
+    };
+
+    const char * envp[] = {
+        NULL
+    };
+
+    (void) std_sys_execve_command(script, args, envp);
 
     return;
 }

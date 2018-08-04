@@ -515,7 +515,6 @@ t_std_error sdi_qsfp_media_max_power_get (sdi_resource_hdl_t resource_hdl, int *
     if ((rc = sdi_qsfp_module_select(qsfp_device)) != STD_ERR_OK) {
         SDI_DEVICE_ERRMSG_LOG("QSFP module selection failed when attempting max power get for %s",
              qsfp_device->alias);
-        sdi_qsfp_module_deselect(qsfp_priv_data);
         return rc;
     }
 
@@ -600,7 +599,6 @@ t_std_error sdi_qsfp_media_force_power_mode_set(sdi_resource_hdl_t resource_hdl,
     if ((rc = sdi_qsfp_module_select(qsfp_device)) != STD_ERR_OK) {
         SDI_DEVICE_ERRMSG_LOG("QSFP module selection failed when attempting mode class set for %s",
              qsfp_device->alias);
-        sdi_qsfp_module_deselect(qsfp_priv_data);
         return rc;
     }
 
@@ -640,8 +638,8 @@ t_std_error sdi_qsfp_media_force_power_mode_set(sdi_resource_hdl_t resource_hdl,
         }
     } while (0);
 
-        sdi_qsfp_module_deselect(qsfp_priv_data);
-        return rc;
+    sdi_qsfp_module_deselect(qsfp_priv_data);
+    return rc;
 }
 
 
@@ -3001,7 +2999,6 @@ t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
     if (rc != STD_ERR_OK){
         SDI_DEVICE_ERRMSG_LOG("Could not acquire bus when attempting module reset for QSA detection");
         *qsa_adapter = SDI_QSA_ADAPTER_UNKNOWN;
-        sdi_pin_group_release_bus(qsfp_priv_data->mod_reset_hdl);
         return rc;
     }
 
@@ -3026,7 +3023,6 @@ t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
         SDI_DEVICE_ERRMSG_LOG("QSFP module selection failed when attempting QSA info get for %s",
              qsfp_device->alias);
         *qsa_adapter = SDI_QSA_ADAPTER_UNKNOWN;
-        sdi_qsfp_module_deselect(qsfp_priv_data);
         return rc;
     }
 
@@ -3055,7 +3051,6 @@ t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
     rc = sdi_pin_group_acquire_bus(qsfp_priv_data->mod_reset_hdl);
     if (rc != STD_ERR_OK){
         SDI_DEVICE_ERRMSG_LOG("Could not acquire bus when attempting module reset for QSA detection");
-        sdi_pin_group_release_bus(qsfp_priv_data->mod_reset_hdl);
         return rc;
     }
 
