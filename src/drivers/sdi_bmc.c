@@ -42,6 +42,7 @@
 #include <signal.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static ipmi_domain_id_t domain_id;
 
