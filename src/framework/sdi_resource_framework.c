@@ -25,6 +25,7 @@
 #include "sdi_resource_internal.h"
 #include "sdi_fan_internal.h"
 #include "sdi_thermal_internal.h"
+#include "sdi_ext_ctrl_internal.h"
 #include "sdi_nvram_internal.h"
 #include "sdi_power_monitor_internal.h"
 #include "sdi_entity_info_internal.h"
@@ -124,6 +125,7 @@ sdi_resource_hdl_t sdi_find_resource_by_name(const char *name)
     }
     return NULL;
 }
+
 /**
  * sdi_dump_resources can be used for debugging purpose to list all the
  * resources in the systsem.
@@ -182,6 +184,11 @@ t_std_error sdi_resource_init(sdi_resource_hdl_t hdl, void *data)
        case SDI_RESOURCE_POWER_MONITOR:
            if ((((power_monitor_t *) resource_hdl->callback_fns)->init) != NULL) {
                rc = (*((power_monitor_t *) resource_hdl->callback_fns)->init)(resource_hdl->callback_hdl);
+           }
+           break;
+       case SDI_RESOURCE_EXT_CONTROL:
+           if ((((ext_ctrl_t *)resource_hdl->callback_fns)->init) != NULL) {
+               rc = ((ext_ctrl_t *)resource_hdl->callback_fns)->init(resource_hdl->callback_hdl);
            }
            break;
        case SDI_RESOURCE_LED:

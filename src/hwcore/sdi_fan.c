@@ -76,6 +76,7 @@ t_std_error sdi_fan_speed_set(sdi_resource_hdl_t hdl, uint_t speed)
     if(((fan_ctrl_t *)fan_hdl->callback_fns)->speed_set == NULL) {
         return  SDI_ERRCODE(EOPNOTSUPP);
     }
+
     rc = ((fan_ctrl_t *)fan_hdl->callback_fns)->speed_set(hdl, fan_hdl->callback_hdl, speed);
     if(rc != STD_ERR_OK)
     {

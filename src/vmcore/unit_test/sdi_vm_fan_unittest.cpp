@@ -50,7 +50,7 @@ TEST(sdi_vm_fan_unittest, fanSpeedWrite)
     sdi_db_int_field_get(sdi_get_db_handle(), info_hdl, TABLE_INFO,
                          INFO_FAN_MAX_SPEED, (int *)&max_speed);
 
-    
+
     //setup fan speed
     fan_speed1 = fan_speed_rpm(max_speed, 80);
     fan_speed2 = fan_speed_rpm(max_speed, 100);

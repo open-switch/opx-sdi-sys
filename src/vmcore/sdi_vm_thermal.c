@@ -52,7 +52,7 @@ static const char * sdi_threshold_to_string(sdi_threshold_t threshold_type)
 /*
  * Retrieve the threshold set for the specified temperature sensor.
  */
-t_std_error sdi_temperature_threshold_get(sdi_resource_hdl_t sensor_hdl, 
+t_std_error sdi_temperature_threshold_get(sdi_resource_hdl_t sensor_hdl,
         sdi_threshold_t threshold_type,  int *val)
 {
     const char *threshold = sdi_threshold_to_string(threshold_type);

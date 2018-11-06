@@ -25,6 +25,12 @@
 #include "std_error_codes.h"
 #include "sdi_driver_internal.h"
 
+/******************************************************************************
+ * @file sdi_comm_dev_internal.h
+ * @brief Defines SDI FReD IO APIs
+ * @{
+ *****************************************************************************/
+
 /*
  * Each comm_dev resource provides the following callbacks.
  */
@@ -60,11 +66,74 @@ typedef struct {
     /* For flushing write message buffer with I2C bus */
     t_std_error  (*flush_msg_buffer)(sdi_resource_hdl_t resource_hdl);
 
+    /* For reading write buffer readiness info with I2C bus */
+    t_std_error  (*get_buffer_ready)(sdi_resource_hdl_t resource_hdl, bool *ready);
+
     /* For Enabling messaging over comm dev */
     t_std_error  (*messaging_enable)(sdi_resource_hdl_t resource_hdl, bool messaging_enable);
 
-    /* For reading write buffer readiness info with I2C bus */
-    t_std_error  (*get_buffer_ready)(sdi_resource_hdl_t resource_hdl, bool *ready);
 } comm_dev_ctrl_t;
+
+/*
+ * FReD Temperature sensors device private data
+ */
+typedef struct sdi_comm_dev_ext_ctrl_device
+{
+    uint16_t ctrl_value_offset;
+    uint16_t width;
+    uint16_t step;
+    bool     refresh;
+
+    /* Default sensor limits */
+    uint16_t default_ctrl_value_offset;
+    uint16_t default_width;
+    uint16_t default_step;
+    bool     default_refresh;
+
+    bool ctrl_value_offset_valid;
+    bool width_valid;
+    bool step_valid;
+    bool refresh_valid;
+
+    sdi_resource_hdl_t comm_dev;
+} sdi_comm_dev_ext_ctrl_device_t;
+
+#define SDI_COMM_DEV_MAX_CTRL_DATA_LEN (2)
+
+
+/**
+ * @brief sdi_comm_dev_read
+ * Write given byte data to FReD IO
+ * @param[in] resource_hdl
+ * @param[in] i2c_addr sdi i2c address
+ * @param[in] offset
+ * @param[in] len to read
+ * @param[out] value data to be written to 
+ * @return STD_ERR_OK on SUCCESS, SDI_ERRNO on FAILURE
+ */
+t_std_error sdi_comm_dev_read(sdi_resource_hdl_t resource_hdl, uint8_t i2c_addr, uint16_t offset, uint16_t len, uint8_t *data);
+
+/**
+ * @brief sdi_comm_dev_write
+ * Write given byte data to FReD IO
+ * @param[in] resource_hdl
+ * @param[in] i2c_addr sdi i2c address
+ * @param[in] offset
+ * @param[in] len to read
+ * @param[out] value data to be written
+ * @return STD_ERR_OK on SUCCESS, SDI_ERRNO on FAILURE
+ */
+t_std_error sdi_comm_dev_write(sdi_resource_hdl_t resource_hdl, uint8_t i2c_addr, uint16_t offset, uint16_t len, uint8_t *data);
+
+/**
+ * @brief sdi_comm_dev_reset_refresh
+ * refresh the resource_hdl
+ * @param[in] resource_hdl
+ */
+t_std_error sdi_comm_dev_reset_refresh(sdi_resource_hdl_t resource_hdl);
+
+/**
+ * @}
+ */
 
 #endif

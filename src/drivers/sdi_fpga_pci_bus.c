@@ -73,7 +73,7 @@ static t_std_error fpga_pci_bus_driver_init(sdi_bus_hdl_t bus_hdl)
 
     int fd = -1;
     fd = open(fpga_pci_bus->fpga_sysfs_name, O_RDWR | O_SYNC);
-    fpga_base_ptr = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    fpga_base_ptr = mmap(0,24576, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
     sdi_bus_init_device_list(bus_hdl);
 

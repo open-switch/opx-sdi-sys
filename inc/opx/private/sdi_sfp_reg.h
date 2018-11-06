@@ -58,13 +58,16 @@ typedef enum {
     SFP_WAVELENGTH_OFFSET           = 60,
     SFP_CC_BASE_OFFSET              = 63,
     SFP_OPTIONS_OFFSET              = 64,
+    SFP_OPTIONS2_OFFSET             = 65,
     SFP_MAX_BITRATE_OFFSET          = 66,
     SFP_MIN_BITRATE_OFFSET          = 67,
     SFP_VENDOR_SN_OFFSET            = 68,
     SFP_VENDOR_DATE_OFFSET          = 84,
     SFP_DIAG_MON_TYPE_OFFSET        = 92,
     SFP_ENHANCED_OPTIONS_OFFSET     = 93,
-    SFP_CC_EXT_OFFSET               = 95
+    SFP_CC_EXT_OFFSET               = 95,
+    SFP_DELL_PRODUCT_ID_OFFSET         = 96,
+    SFP_INTERNAL_PART_NUMBER_OFFSET = 134,
 } sfp_reg_offset_t;
 
 
@@ -119,9 +122,38 @@ typedef enum {
     SFP_ALARM_STATUS_2_OFFSET       = 113,
     SFP_WARNING_STATUS_1_OFFSET     = 116,
     SFP_WARNING_STATUS_2_OFFSET     = 117,
+    SFP_PAGE_SELECT_BYTE_OFFSET = 127,
     SFP_TARGET_WAVELENGTH_OFFSET    = 146
 } sfp_diag_mntr_reg_offset_t;
 
+
+/**
+ * @enum sfp_dev_A2_page_02_reg_offset_t
+ * All following offsets are in dev A2 page 02
+ */
+typedef enum {
+
+    SFP_TUNE_TYPE_SUPPORT_OFFSET            = 128,
+
+    /* 10 byte block of info about module capabilities in the following order */
+    SFP_TUNABLE_FREQ_CAPABILITIES_OFFSET    = 132,
+    /* 132, 133 : Minimum frequency allowed (Integer part in THz), 2 bytes each, MSB first */
+    /* 134, 135 : Min freq fractional part as integer. Need to divide by SDI_FREQ_FRACTIONAL_PART_DIVISION_FACTOR */
+
+    /* 136, 137 : Maximum frequency allowed (Integer part in THz), 2 bytes each */
+    /* 138, 139 : Maximum fractional part as integer. Need to divide by SDI_FREQ_FRACTIONAL_PART_DIVISION_FACTOR */
+
+    /* 140, 141: Minimum allowed spacing for freq. Units of 0.1GHz */
+    /* Need to divide by SDI_FREQ_FRACTIONAL_PART_DIVISION_FACTOR */
+
+    SFP_LASER_MINIMUM_GRID_SPACING_OFFSET   = 140,
+
+    /* Two bytes to set channel number. MSB, LSB */
+    SFP_CHANNEL_NUMBER_SET_OFFSET           = 144,
+
+    /* Two bytes to set wavelength, in units of 0.05nm */
+    SFP_WAVELENGTH_SET_OFFSET               = 146
+} sfp_dev_A2_page_02_reg_offset_t;
 /**
  * @enum sfp_diag_mntr_bit_mask_t
  * SFP Diagnostic Monitoring Type bit definitions
@@ -164,6 +196,19 @@ typedef enum {
  * Tunable optics transmitter technology offset A0h, byte 65, Bit 6.
  */
 #define SFP_TX_TECH_TUNABLE_OFFSET  (6)
+
+
+
+/* Bit in SFP_OPTIONS2_OFFSET which specifies wavelength tune support  */
+#define SDI_SFP_TUNABLE_SUPPORT_BITMASK          (1 << 6)
+
+#define SDI_SFP_TUNABLE_PAGE                     2
+
+/* This bit specifies if the module can be tuned by the frequency channel */
+#define SDI_SFP_TX_FREQ_CHANNEL_TUNE_SUPPORT_BITMASK   (1)
+/* This bit specifies if the module can be tuned by the wavenelgth */
+#define SDI_SFP_TX_WAVELENGTH_TUNE_SUPPORT_BITMASK   (0)
+
 
 /* Diagnostic Monitoring Type Address A0h, Byte 92 */
 #define SFP_DIAG_MNTR_BIT_OFFSET    (6)
@@ -225,6 +270,8 @@ typedef enum {
 
 #define SFP_COPPER_STAT_LA                 (1 << 2) /* Link Active */
 #define SFP_COPPER_EXT_STAT_LA             (1 << 10) /* Real time Link Active */
+
+
 /** CuSFP registers **/
 #define SFP_COPPER_CTRL_REG            0x00
 #define SFP_COPPER_STAT_REG            0x01
@@ -238,6 +285,7 @@ typedef enum {
 
 /** SFP_COPPER_PHY_CTRL_REG bits **/
 #define SFP_COPPER_PHY_CTRL_MAC_INT_PD  (1 << 3) /* MAC Interface Power down */
+
 /** MII link advertisement registers */
 #define SFP_COPPER_ANA_ASF             (1 << 0)/* Advertise Selector Field */
 #define SFP_COPPER_ANA_HD_10           (1 << 5)/* Half duplex 10Mb/s supported */

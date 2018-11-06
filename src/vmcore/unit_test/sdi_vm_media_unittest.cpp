@@ -397,7 +397,7 @@ TEST(sdi_vm_media_unittest, module_thresholds)
 
 
     ASSERT_EQ(STD_ERR_OK,
-        sdi_media_channel_monitor_threshold_get(media_hdl, 
+        sdi_media_channel_monitor_threshold_get(media_hdl,
             SDI_MEDIA_RX_PWR_HIGH_WARNING, &threshold));
     ASSERT_EQ(18, threshold);
 

@@ -93,6 +93,7 @@ nobase_include_HEADERS = \
         opx/sdi_comm_dev.h \
         opx/sdi_entity.h \
         opx/sdi_entity_info.h \
+	opx/sdi_ext_ctrl.h \
         opx/sdi_fan.h \
         opx/sdi_host_system.h \
         opx/sdi_led.h \

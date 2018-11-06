@@ -107,8 +107,8 @@ t_std_error sdi_nvram_read(sdi_resource_hdl_t resource_hdl, uint8_t *buf, uint_t
                                 TABLE_NVRAM, NVRAM_OFFSET, &nvram_ofs);
     if (STD_IS_ERR(rc)) {
         return rc;
-    }    
-   
+    }
+
     rc = STD_ERR_OK;
     nvram_fd = sdi_nvram_find_or_create_nvram_file(nvram_filename, nvram_size);
     if (nvram_fd < 0
@@ -119,7 +119,7 @@ t_std_error sdi_nvram_read(sdi_resource_hdl_t resource_hdl, uint8_t *buf, uint_t
     }
 
     if (nvram_fd >= 0)  close(nvram_fd);
-    
+
     return (rc);
 }
 
@@ -147,15 +147,15 @@ t_std_error sdi_nvram_write(sdi_resource_hdl_t resource_hdl, uint8_t *buf, uint_
     if (STD_IS_ERR(rc)) {
         return rc;
     }
-   
+
     off_t nvram_ofs;
 
     rc = sdi_db_int64_field_get(sdi_get_db_handle(), resource_hdl,
                                 TABLE_NVRAM, NVRAM_OFFSET, &nvram_ofs);
     if (STD_IS_ERR(rc)) {
         return rc;
-    }    
-   
+    }
+
     rc = STD_ERR_OK;
     nvram_fd = sdi_nvram_find_or_create_nvram_file(nvram_filename, nvram_size);
     if (nvram_fd < 0
@@ -166,6 +166,6 @@ t_std_error sdi_nvram_write(sdi_resource_hdl_t resource_hdl, uint8_t *buf, uint_
     }
 
     if (nvram_fd >= 0)  close(nvram_fd);
-    
+
     return (rc);
 }

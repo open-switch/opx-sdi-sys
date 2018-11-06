@@ -35,7 +35,58 @@
 
 #define SDI_SFP_LED_HIGH_VALUE 1
 
-#define SDI_SFP_ZERO_WATT_POWER_IN_DBM NAN
+
+/* See SFF 8690 for all wavelength set related spec */
+/* speed of light = frequency * wavelength */
+/* since using THz (10^12) and nm (10 ^-9), speed * 0.001 = freq*wav  */
+#define SPEED_OF_LIGHT                                                        299792458.0 /* in m/s */
+#define WAVELENGTH_NM_TO_FREQ_THZ(wav)                                       (0.001 * SPEED_OF_LIGHT / (wav))
+#define FREQ_THZ_TO_WAVELENGTH_NM(freq)                                      (0.001 * SPEED_OF_LIGHT / (freq))
+#define SDI_TWO_BYTE_TO_UINT16(msb, lsb)                                     (uint16_t)(((msb) << 8) | (lsb))
+#define SDI_GET_CHANNEL_NO_FROM_FREQ(target_freq, first_freq, grid_spacing)   lroundf(1 + ((target_freq) - (first_freq)) / (grid_spacing))
+#define SDI_FREQ_FRACTIONAL_PART_DIVISION_FACTOR                              10000.0
+#define SDI_FREQ_WAVELENGTH_DIVISION_FACTOR                                   0.05
+#define SDI_FREQ_JOIN(integer_part, frac_part)                               ((float)(integer_part) + (float)(frac_part)/SDI_FREQ_FRACTIONAL_PART_DIVISION_FACTOR)
+
+#define SDI_SFP_DEFAULT_PAGE                                      0
+#define SDI_SFP_TUNABLE_PAGE                                      2
+
+#define SDI_SFP_TUNABLE_FREQ_CAPABILITIES_LEN                     10
+#define SDI_WAVELENGTH_SET_POLL_PERIOD_MS                         10
+#define SDI_WAVELENGTH_SET_TIMEOUT_MS                             100
+
+#define SDI_SFP_CAPABILITIES_MIN_FREQ_INT_PART_MSB_BYTE_POS       0
+#define SDI_SFP_CAPABILITIES_MIN_FREQ_INT_PART_LSB_BYTE_POS       1
+#define SDI_SFP_CAPABILITIES_MIN_FREQ_FRAC_PART_MSB_BYTE_POS      2
+#define SDI_SFP_CAPABILITIES_MIN_FREQ_FRAC_PART_LSB_BYTE_POS      3
+#define SDI_SFP_CAPABILITIES_MAX_FREQ_INT_PART_MSB_BYTE_POS       4
+#define SDI_SFP_CAPABILITIES_MAX_FREQ_INT_PART_LSB_BYTE_POS       5
+#define SDI_SFP_CAPABILITIES_MAX_FREQ_FRAC_PART_MSB_BYTE_POS      6
+#define SDI_SFP_CAPABILITIES_MAX_FREQ_FRAC_PART_LSB_BYTE_POS      7
+#define SDI_SFP_CAPABILITIES_GRID_SPACING_MSB_BYTE_POS            8
+#define SDI_SFP_CAPABILITIES_GRID_SPACING_LSB_BYTE_POS            9
+
+/* Unlateched current status register bitmasks */
+#define SDI_SFP_WAVELENGTH_CURRENT_STATUS_TEC_FAULT_BITSMASK     (1<<6)
+#define SDI_SFP_WAVELENGTH_CURRENT_STATUS_WAV_UNLOCKED_BITMASK   (1<<5)
+#define SDI_SFP_WAVELENGTH_CURRENT_STATUS_TX_TUNING_BITSMASK     (1<<4)
+
+#define TEST_LATCHED_STATUS(x) !(x & SDI_SFP_WAVELENGTH_CURRENT_STATUS_TEC_FAULT_BITSMASK \
+                                    & SDI_SFP_WAVELENGTH_CURRENT_STATUS_WAV_UNLOCKED_BITMASK \
+                                    & SDI_SFP_WAVELENGTH_CURRENT_STATUS_TX_TUNING_BITSMASK )
+
+/* Latched status register bitmasks */
+#define SDI_SFP_WAVELENGTH_CURRENT_STATUS_LATCHED_TEC_FAULT_BITSMASK              (1<<6)
+#define SDI_SFP_WAVELENGTH_CURRENT_STATUS_LATCHED_WAV_UNLOCKED_BITMASK            (1<<5)
+#define SDI_SFP_WAVELENGTH_CURRENT_STATUS_LATCHED_BAD_CHANNEL_BITMASK             (1<<4)
+#define SDI_SFP_WAVELENGTH_CURRENT_STATUS_LATCHED_NEW_CHANNEL_ACQUIRED_BITMASK    (1<<3)
+
+#define TEST_UNLATCHED_STATUS(x) ! (x & SDI_SFP_WAVELENGTH_CURRENT_STATUS_LATCHED_TEC_FAULT_BITSMASK \
+                                       & SDI_SFP_WAVELENGTH_CURRENT_STATUS_LATCHED_WAV_UNLOCKED_BITMASK \
+                                       & SDI_SFP_WAVELENGTH_CURRENT_STATUS_LATCHED_BAD_CHANNEL_BITMASK \
+                                       & SDI_SFP_WAVELENGTH_CURRENT_STATUS_LATCHED_NEW_CHANNEL_ACQUIRED_BITMASK )
+
+
 
 /**
  * @struct sdi_media_led_t
@@ -47,6 +98,19 @@ typedef struct port_led {
     uint_t led_1g_mode_value; /*<< 1G mode value to be written on bus */
     uint_t led_10g_mode_value; /*<< 10G mode value to be written on bus */
 } sdi_media_led_t;
+
+/**
+ * @struct sdi_sfp_get_tunable_capabilities_t
+ * SFP tunable capabilities
+ */
+typedef struct sdi_sfp_tunable_capabilities {
+    float min_freq;    /* Freq in THz*/
+    float max_freq;    /* Freq in THz*/
+    float grid_spacing;  /* in THz units */
+    bool channel_set_support; /* can channel be set? */
+    bool wavelength_set_support; /* can wavelenght be set? */
+    uint_t channel_count; /* channel starts from 1 to N */
+} sdi_sfp_tunable_capabilities_t;
 
 /**
  * @struct sfp_device_t
@@ -408,6 +472,7 @@ t_std_error sdi_sfp_module_init (sdi_resource_hdl_t resource_hdl, bool pres);
  * @param[in]  - wavelength value
  */
 t_std_error sdi_sfp_wavelength_set (sdi_resource_hdl_t resource_hdl, float value);
+
 /**
  * @brief Api to get link status from media PHY.
  * @param[in] resource_hdl - handle to media

@@ -18,6 +18,7 @@
  * @file sdi_vm_sys_init.h
  * @brief Dell Networking SDI (System Device Interface) VM
  * (Virtual Machine) initialization/deinitialization functions
+ *
  */
 
 #ifndef _SDI_VM_SYS_INIT_H

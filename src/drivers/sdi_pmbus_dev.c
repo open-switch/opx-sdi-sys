@@ -39,6 +39,7 @@
 #include "sdi_i2c_bus_api.h"
 #include "std_assert.h"
 #include "std_utils.h"
+#include "sdi_platform_util.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -154,6 +155,7 @@ static inline int sdi_pmbus_linear_data_to_int(uint8_t user_data_msb, uint8_t us
 static t_std_error sdi_pmbus_dev_temperature_get(void *resource_hdl, int *temperature)
 {
     uint8_t buf[2] = {0};
+    uint16_t data = 0;
     sdi_device_hdl_t chip = NULL;
     sdi_pmbus_dev_t *pmbus_dev = NULL;
     uint_t sensor_index = 0;
@@ -183,7 +185,9 @@ static t_std_error sdi_pmbus_dev_temperature_get(void *resource_hdl, int *temper
     }
 
     rc = sdi_smbus_read_word(chip->bus_hdl, chip->addr.i2c_addr, pmbug_reg,
-                             (uint16_t*)&buf, pmbus_dev->pec_req);
+                             &data, pmbus_dev->pec_req);
+
+    sdi_platform_util_write_16bit_to_bytearray_le(buf,data);
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("pmbus device read failure at addr: %x reg: %x rc: %x\n",
@@ -216,6 +220,7 @@ static t_std_error sdi_pmbus_dev_temperature_get(void *resource_hdl, int *temper
 static t_std_error sdi_pmbus_dev_fan_speed_get(sdi_resource_hdl_t real_resource_hdl, void *resource_hdl, uint_t *fan_speed)
 {
     uint8_t buf[2] = {0};
+    uint16_t data = 0;
     sdi_device_hdl_t chip = NULL;
     sdi_pmbus_dev_t *pmbus_dev = NULL;
     uint_t sensor_index = 0;
@@ -249,8 +254,11 @@ static t_std_error sdi_pmbus_dev_fan_speed_get(sdi_resource_hdl_t real_resource_
     }
 
     rc = sdi_smbus_read_word(chip->bus_hdl, chip->addr.i2c_addr, pmbug_reg,
-                             (uint16_t*)&buf, pmbus_dev->pec_req);
-    if(rc != STD_ERR_OK)
+                            &data, pmbus_dev->pec_req);
+
+    sdi_platform_util_write_16bit_to_bytearray_le(buf,data);
+
+   if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("pmbus read failure at addr: %d reg: %d rc: %d\n",
                 chip->addr.i2c_addr.i2c_addr,pmbug_reg,rc);
@@ -311,7 +319,7 @@ static uint_t sdi_pmbus_dev_fan_speed_rpm_to_pct(sdi_resource_hdl_t real_resourc
             }
         }
     }
-            
+
     /* If map-based lookup above did not succeed, ... */
     if (!pct_valid) {
         /* Duty cycle */
@@ -321,7 +329,7 @@ static uint_t sdi_pmbus_dev_fan_speed_rpm_to_pct(sdi_resource_hdl_t real_resourc
                 pct = (rpm / SDI_FAN_RPM_TO_DUTY_CYCLE(pmbus_dev_data->max_fan_speed));
             }
     }
-        
+
     return (pct);
 }
 
@@ -360,7 +368,7 @@ static uint_t sdi_pmbus_dev_fan_speed_pct_to_rpm(sdi_resource_hdl_t real_resourc
             }
         }
     }
-            
+
     /* If map-based lookup above did not succeed, ... */
     if (!rpm_valid) {
         /* Duty cycle */
@@ -370,7 +378,7 @@ static uint_t sdi_pmbus_dev_fan_speed_pct_to_rpm(sdi_resource_hdl_t real_resourc
                 rpm = (pct * pmbus_dev_data->max_fan_speed) / 100;
             }
     }
-        
+
     return (rpm);
 }
 
@@ -390,7 +398,7 @@ static t_std_error sdi_pmbus_dev_fan_speed_set(sdi_resource_hdl_t real_resource_
     uint_t sensor_index = 0;
     uint_t pmbug_reg = 0;
     t_std_error rc = STD_ERR_OK;
-    uint16_t *pval = NULL;
+    uint16_t pval = 0;
 
     STD_ASSERT(resource_hdl != NULL);
 
@@ -419,11 +427,9 @@ static t_std_error sdi_pmbus_dev_fan_speed_set(sdi_resource_hdl_t real_resource_
 
     /*Store the speed percentage to write in to the pmbus register*/
     buf[0] = sdi_pmbus_dev_fan_speed_rpm_to_pct(real_resource_hdl, resource_hdl, fan_speed);
-
-    pval = (uint16_t*)buf;
-    
+    pval = sdi_platform_util_convert_le_to_uint16(buf);
     rc = sdi_smbus_write_word(chip->bus_hdl, chip->addr.i2c_addr, pmbug_reg,
-                              *pval, pmbus_dev->pec_req);
+                              pval, pmbus_dev->pec_req);
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("pmbus write failure at addr: %d reg: %d rc: %d\n",

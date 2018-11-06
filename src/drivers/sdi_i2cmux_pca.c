@@ -350,3 +350,4 @@ static t_std_error sdi_i2cmux_pca_driver_init(sdi_device_hdl_t device_hdl)
 
     return error;
 }
+

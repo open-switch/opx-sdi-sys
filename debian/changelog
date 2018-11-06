@@ -1,8 +1,17 @@
+opx-sdi-sys (4.24.0) unstable; urgency=medium
+
+  * Bugfix: Removed assertion of delay entry in sdi cfg file
+  * Bugfix: Different optics type detected
+  * Bugfix: Fix endianess issue
+  * Update: Set default RX value to conform with dBm measurement
+
+ -- Dell EMC <ops-dev@lists.openswitch.net>  Tue, 06 Nov  2018 15:00:00 -0800
+
 opx-sdi-sys (4.22.2) unstable; urgency=medium
 
   * Update: QSFP Enhancements.
   * Update: Removed redundant module deselect and bus release.
-  * Update: Use std_sys_execve_command instead of system command 
+  * Update: Use std_sys_execve_command instead of system command
             to avoid exploitable vulnerabilities.
   * Bugfix: Smartfusion sources need to release IO mutex when return in error cases.
 

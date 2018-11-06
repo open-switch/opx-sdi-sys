@@ -35,11 +35,11 @@
 
 #define NORTHBOUND_MAILBOX_TIME_THRESHOLD     (3)
 #define COMM_DEV_STATUS_CLEAR     0x00
+
 static sdi_i2c_addr_t device_i2c_addr = { .i2c_addr = COMM_DEV_I2C_ADDR, .addr_mode_16bit = 0 };
 static t_std_error sdi_comm_dev_driver_register(std_config_node_t node, void *bus_handle, sdi_device_hdl_t *device_hdl);
 static t_std_error sdi_comm_dev_driver_init(sdi_device_hdl_t device_hdl);
 static t_std_error sdi_comm_dev_status_check_and_clear(sdi_resource_hdl_t resource_hdl);
-static t_std_error sdi_comm_dev_reset_refresh(sdi_resource_hdl_t resource_hdl);
 
 /*
  * Generic read api for Comm_Dev I2C
@@ -242,6 +242,7 @@ static t_std_error sdi_write_mailbox(sdi_resource_hdl_t resource_hdl, uint16_t l
         SDI_DEVICE_ERRMSG_LOG("Resource Handler is not COMM DEV\n");
         return (SDI_ERRCODE(EPERM));
     }
+
     // Check status register and clear it
     // Check status register and clear NB.
 
@@ -293,13 +294,13 @@ static t_std_error sdi_package_read_and_verified(sdi_resource_hdl_t resource_hdl
         STD_BIT_SET(mbox_control[0], SDI_COMM_DEV_BIT_SB_PACKAGE_READ_AND_VERIFIED);
         rc = sdi_comm_dev_write(resource_hdl, COMM_DEV_I2C_ADDR, SDI_COMM_DEV_VENDOR_INTELLIGENCE_MAILBOX_CONTROL,
                                 SDI_COMM_DEV_VENDOR_INTELLIGENCE_MAILBOX_CONTROL_SIZE, &mbox_control[0]);
-
-    if (STD_ERR_OK != rc) {
-        SDI_DEVICE_ERRMSG_LOG("Error writing Package Read and Verified flag rc=%d\n", rc);
-    }
+        if (STD_ERR_OK != rc) {
+            SDI_DEVICE_ERRMSG_LOG("Error writing Package Read and Verified flag rc=%d\n", rc);
+        }
     } else {
         SDI_DEVICE_ERRMSG_LOG("Error reading Package Read and Verified flag rc=%d\n", rc);
     }
+
     return rc;
 }
 
@@ -312,6 +313,7 @@ static t_std_error sdi_package_download_complete(sdi_resource_hdl_t resource_hdl
                              + SDI_COMM_DEV_NORTHBOUND_MAILBOX_TIME_THRESHOLD_SIZE] = {0};
     uint16_t  *tm_ptr = (uint16_t *) (mbox_control + SDI_COMM_DEV_VENDOR_INTELLIGENCE_MAILBOX_CONTROL_SIZE);
 
+
     rc = sdi_comm_dev_read(resource_hdl, COMM_DEV_I2C_ADDR, SDI_COMM_DEV_VENDOR_INTELLIGENCE_MAILBOX_CONTROL,
                            SDI_COMM_DEV_VENDOR_INTELLIGENCE_MAILBOX_CONTROL_SIZE, &mbox_control[0]);
     if (STD_ERR_OK == rc) {
@@ -319,13 +321,13 @@ static t_std_error sdi_package_download_complete(sdi_resource_hdl_t resource_hdl
         *tm_ptr = NORTHBOUND_MAILBOX_TIME_THRESHOLD;
         rc = sdi_comm_dev_write(resource_hdl, COMM_DEV_I2C_ADDR, SDI_COMM_DEV_VENDOR_INTELLIGENCE_MAILBOX_CONTROL,
                                 sizeof(mbox_control), &mbox_control[0]);
-
-    if (STD_ERR_OK != rc) {
-        SDI_DEVICE_ERRMSG_LOG("Error writing Package Download Complete flag rc=%d\n", rc);
-    }
+        if (STD_ERR_OK != rc) {
+            SDI_DEVICE_ERRMSG_LOG("Error writing Package Download Complete flag rc=%d\n", rc);
+        }
     } else {
         SDI_DEVICE_ERRMSG_LOG("Error reading Package Download Complete flag rc=%d\n", rc);
     }
+
     return rc;
 }
 
@@ -485,6 +487,7 @@ static t_std_error sdi_read_platform_info(sdi_resource_hdl_t resource_hdl, sdi_p
 
     return rc;
 }
+
 /*
  * Flush NorthBound Mailbox using Comm_Dev I2C bus
  */
@@ -533,7 +536,7 @@ static t_std_error sdi_is_buffer_ready(sdi_resource_hdl_t resource_hdl, bool *re
 /*
  * Refresh comm dev after a dynamic reset after an update
  */
-static t_std_error sdi_comm_dev_reset_refresh(sdi_resource_hdl_t resource_hdl)
+t_std_error sdi_comm_dev_reset_refresh(sdi_resource_hdl_t resource_hdl)
 {
     t_std_error rc = STD_ERR_OK;
     uint8_t     comm_dev_status[SDI_COMM_DEV_VENDOR_INTELLIGENCE_STATUS_REGISTER_SIZE] = {0};
@@ -623,6 +626,7 @@ static t_std_error sdi_comm_dev_status_check_and_clear(sdi_resource_hdl_t resour
     return rc;
 }
 
+
 /* Callback handlers for Comm_Dev */
 static comm_dev_ctrl_t comm_dev_ctrl = {
     .read_mbox = sdi_read_mailbox,
@@ -690,7 +694,4 @@ static t_std_error sdi_comm_dev_driver_register(std_config_node_t node, void *bu
 static t_std_error sdi_comm_dev_driver_init(sdi_device_hdl_t dev_hdl) {
     return STD_ERR_OK;
 }
-
-
-
 

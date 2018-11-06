@@ -30,6 +30,7 @@
 #include "std_error_codes.h"
 #include "std_assert.h"
 #include "std_time_tools.h"
+#include "sdi_platform_util.h"
 
 /* Magic number description not given in appnote from Marvell
    an-2036 app note from Mavell give below magic value to enable
@@ -41,6 +42,7 @@
 #define EXT_PHY_CTRL_SERDES_TX_RX_DISABLE   (0x2001)
 
 #define PHY_CTRL_DELAY (100 * 1000)
+
 static sdi_i2c_addr_t sfp_phy_i2c_addr = { .i2c_addr = SFP_PHY_I2C_ADDR, .addr_mode_16bit = 0};
 
 /**
@@ -82,7 +84,6 @@ t_std_error sdi_sfp_phy_read(sdi_device_hdl_t sfp_device,int reg_offset, uint16_
 
     rc = sdi_smbus_read_word(sfp_device->bus_hdl,sfp_phy_i2c_addr,reg_offset,
             (uint16_t *)word_buf, SDI_I2C_FLAG_NONE);
-
     SDI_DEVICE_TRACEMSG_LOG("SMBUS read #offset %x and #data %x\n", reg_offset, *reg_data);
     if (rc != STD_ERR_OK) {
         SDI_DEVICE_ERRMSG_LOG("sfp smbus read failed at addr : %x reg : %x for %s rc : %d",
@@ -90,7 +91,7 @@ t_std_error sdi_sfp_phy_read(sdi_device_hdl_t sfp_device,int reg_offset, uint16_
         return rc;
     }
 
-    *reg_data = ( (word_buf[0] << 8) | (word_buf[1]) );
+    *reg_data = sdi_platform_util_convert_be_to_uint16(word_buf);
     return rc;
 }
 
@@ -335,7 +336,7 @@ t_std_error sdi_cusfp_phy_power_down_enable (sdi_device_hdl_t sfp_device, bool e
             if (!(reg_data & SFP_COPPER_CTRL_PD)) break;
             reg_data &= ~(SFP_COPPER_CTRL_PD);
         }
-        
+
         rc = sdi_sfp_phy_write(sfp_device, SFP_COPPER_CTRL_REG, reg_data);
         if (rc != STD_ERR_OK) {
             break;

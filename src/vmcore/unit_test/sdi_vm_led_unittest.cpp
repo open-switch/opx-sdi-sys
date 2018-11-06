@@ -138,7 +138,7 @@ TEST(sdi_vm_led_unittest, digital_display_led_state)
     ASSERT_EQ(STD_ERR_OK, sdi_sys_init());
 
     // Find the resource handle
-    r_hdl = 
+    r_hdl =
         sdi_entity_resource_lookup(e_hdl, SDI_RESOURCE_DIGIT_DISPLAY_LED,
                                    "Stack LED");
 

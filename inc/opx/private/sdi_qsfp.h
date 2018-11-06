@@ -29,6 +29,12 @@
 #include "sdi_resource_internal.h"
 #include "sdi_media.h"
 
+/* For some QSFP28-DD version 2.7 and up, length calculation is needed*/
+#define LEN_CODE_MANTISSA_SHIFT      (0)
+#define LEN_CODE_EXPONENT_SHIFT      (6)
+#define LEN_CODE_EXPONENT_BITMASK    (uint8_t)(3<<LEN_CODE_EXPONENT_SHIFT)
+#define LEN_CODE_MANTISSA_BITMASK    (uint8_t)(~LEN_CODE_EXPONENT_BITMASK)
+
 /**
  * @media qsfp category
  */
@@ -59,11 +65,14 @@ typedef struct qsfp_device {
     sdi_pin_group_bus_hdl_t mod_reset_hdl; /**<qsfp device module reset pin
                                              group bus handler*/
     uint_t mod_reset_bitmask; /**<qsfp devie reset bit mask*/
+
+    uint_t mod_reset_delay_ms; /* time to wait for module reset to complete */
+
     sdi_pin_group_bus_hdl_t mod_lpmode_hdl; /**<qsfp device module lpmode pin
                                               group bus handler*/
     uint_t mod_lpmode_bitmask; /**<qsfp devie lpmode bitmask*/
     uint_t delay; /**<delay in milli seconds*/
-    
+
     sdi_media_type_t  mod_type; /**<media module type which is pluged in using
                                     QSA adapter in qsfp port */
     sdi_device_hdl_t  sfp_device;/**<sfp device callback data when QSA adapter is
@@ -366,7 +375,7 @@ t_std_error sdi_qsfp_phy_link_status_get (sdi_resource_hdl_t resource_hdl, uint_
 /**
  * @brief Api to power down enable/disable on media PHY.
  * @param[in] resource_hdl - handle to media
- * @param[in] channel - channel number, 0 is valid 
+ * @param[in] channel - channel number, 0 is valid
  * @param[in] type - Media type.
  * @param[in] enable - true power down media PHY, false - power up media PHY.
  * @return - standard @ref t_std_error

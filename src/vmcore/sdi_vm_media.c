@@ -53,8 +53,8 @@ t_std_error sdi_media_module_monitor_status_get (sdi_resource_hdl_t resource_hdl
                                                 flags, status);
 }
 
-/* 
- * Api to enable/disable Autoneg on media PHY 
+/*
+ * Api to enable/disable Autoneg on media PHY
  */
 t_std_error sdi_media_phy_autoneg_set (sdi_resource_hdl_t resource_hdl,
                                        uint_t channel, sdi_media_type_t type,
@@ -64,8 +64,8 @@ t_std_error sdi_media_phy_autoneg_set (sdi_resource_hdl_t resource_hdl,
     return STD_ERR_OK;
 }
 
-/* 
- * Api to set mode on media PHY 
+/*
+ * Api to set mode on media PHY
  */
 t_std_error sdi_media_phy_mode_set (sdi_resource_hdl_t resource_hdl,
                                     uint_t channel, sdi_media_type_t type,
@@ -75,8 +75,8 @@ t_std_error sdi_media_phy_mode_set (sdi_resource_hdl_t resource_hdl,
     return STD_ERR_OK;
 }
 
-/* 
- * Api to set speed on media PHY 
+/*
+ * Api to set speed on media PHY
  */
 t_std_error sdi_media_phy_speed_set (sdi_resource_hdl_t resource_hdl,
                                      uint_t channel, sdi_media_type_t type,
@@ -89,7 +89,7 @@ t_std_error sdi_media_phy_speed_set (sdi_resource_hdl_t resource_hdl,
 /*
  * Set the LED status of the specific media based on speed.
  */
-t_std_error sdi_media_led_set (sdi_resource_hdl_t resource_hdl, uint_t channel, sdi_media_speed_t speed) 
+t_std_error sdi_media_led_set (sdi_resource_hdl_t resource_hdl, uint_t channel, sdi_media_speed_t speed)
 {
     //TODO: To be implemented after discussing the required implementation. Stubbed out to allow build to succeed
     return STD_ERR_OK;
@@ -205,7 +205,7 @@ t_std_error sdi_media_vendor_info_get(sdi_resource_hdl_t resource_hdl,
     STD_ASSERT(info != NULL);
     switch (info_type) {
     case SDI_MEDIA_VENDOR_OUI:
-        /* 
+        /*
          * Because OUI is the sole non-ASCII field, we are saving it in the
          * main media table as a blob field
          */

@@ -403,3 +403,4 @@ static t_std_error sdi_segment_display_register (std_config_node_t node, void *b
 
     return STD_ERR_OK;
 }
+

@@ -53,7 +53,7 @@ t_std_error sdi_cusfp_phy_autoneg_set (sdi_device_hdl_t sfp_device, bool enable)
 t_std_error sdi_cusfp_phy_mode_set (sdi_device_hdl_t sfp_device, sdi_media_mode_t mode);
 
 /**
- * @brief Api to  set speed  on media PHY .
+ * @brief Api to  set speed  on media PHY.
  * @param[in] resource_hdl - handle to media
  * @param[in] speed - speed of the interface. Should be of type @ref sdi_media_speed_t .
  * @return - standard @ref t_std_error

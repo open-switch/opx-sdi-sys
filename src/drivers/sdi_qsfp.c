@@ -478,6 +478,12 @@ static t_std_error sdi_qsfp_register (std_config_node_t node, void *bus_handle,
     STD_ASSERT(node_attr != NULL);
     qsfp_data->mod_reset_bitmask = strtoul(node_attr, NULL, 0);
 
+    node_attr = std_config_attr_get(node, SDI_MEDIA_MODULE_RESET_DELAY_MS);
+
+    qsfp_data->mod_reset_delay_ms = (node_attr == NULL)
+                                    ? 0
+                                    : strtoul(node_attr, NULL, 0);
+
     node_attr = std_config_attr_get(node, SDI_MEDIA_MODULE_LPMODE_BUS);
     STD_ASSERT(node_attr != NULL);
     qsfp_data->mod_lpmode_hdl = sdi_get_pin_group_bus_handle_by_name(node_attr);

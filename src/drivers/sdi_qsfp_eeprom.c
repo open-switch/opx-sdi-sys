@@ -38,10 +38,12 @@
 #include "std_assert.h"
 #include "std_time_tools.h"
 #include "std_bit_ops.h"
+#include "sdi_platform_util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "math.h"
 
 #define QSFP_TX_LOS_FLAG(x) ( QSFP_TX_LOS_BIT_OFFSET << (x) )
 #define QSFP_RX_LOS_FLAG(x) ( QSFP_RX_LOS_BIT_OFFSET << (x) )
@@ -124,6 +126,7 @@ static sdi_qsfp_reg_info_t param_reg_info[] = {
     { 0, 0}, /* for SDI_MEDIA_MIN_BITRATE, not supported on QSFP */
     { 0, 0}, /* for SDI_MEDIA_EXT_COMPLIANCE_CODE, not supported on QSFP */
     { QSFP_FREE_SIDE_DEV_PROP_OFFSET, SDI_QSFP_BYTE_SIZE}, /* For  SDI_FREE_SIDE_DEV_PROP */
+    { 0, 0}, /* for SDI_TUNE_WAVELENGTH_PICO_METERS, not applicable for QSFP yet */
 };
 
 /* For QSFP28-DD rev 3: parameter register information strucutre. Parameters should be defined in the
@@ -224,6 +227,63 @@ static sdi_qsfp_reg_info_t threshold_reg_info[] = {
     /* for SDI_MEDIA_TX_PWR_LOW_WARNING_THRESHOLD */
     { 0, 0 },
 };
+
+/* threshold value register information structure. Parameters in this structure
+ * should be defined in the same order of sdi_media_threshold_type_t */
+ /* These are used for QSFP28-DD rev 3 and up */
+static sdi_qsfp_reg_info_t threshold_reg_info_qsfp28_dd_r3[] = {
+    /* for SDI_MEDIA_TEMP_HIGH_ALARM_THRESHOLD */
+    { QSFP28_DD_R3_TEMP_HIGH_ALARM_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_TEMP_LOW_ALARM_THRESHOLD */
+    { QSFP28_DD_R3_TEMP_LOW_ALARM_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_TEMP_HIGH_WARNING_THRESHOLD */
+    { QSFP28_DD_R3_TEMP_HIGH_WARNING_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_TEMP_LOW_WARNING_THRESHOLD */
+    { QSFP28_DD_R3_TEMP_LOW_WARNING_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_VOLT_HIGH_ALARM_THRESHOLD */
+    { QSFP28_DD_R3_VOLT_HIGH_ALARM_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_VOLT_LOW_ALARM_THRESHOLD */
+    { QSFP28_DD_R3_VOLT_LOW_ALARM_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_VOLT_HIGH_WARNING_THRESHOLD */
+    { QSFP28_DD_R3_VOLT_HIGH_WARNING_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_VOLT_LOW_WARNING_THRESHOLD */
+    { QSFP28_DD_R3_VOLT_LOW_WARNING_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_RX_PWR_HIGH_ALARM_THRESHOLD */
+    { QSFP28_DD_R3_RX_PWR_HIGH_ALARM_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_RX_PWR_LOW_ALARM_THRESHOLD */
+    { QSFP28_DD_R3_RX_PWR_LOW_ALARM_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_RX_PWR_HIGH_WARNING_THRESHOLD */
+    { QSFP28_DD_R3_RX_PWR_HIGH_WARNING_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_RX_PWR_LOW_WARNING_THRESHOLD */
+    { QSFP28_DD_R3_RX_PWR_LOW_WARNING_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_TX_BIAS_HIGH_ALARM_THRESHOLD */
+    { QSFP28_DD_R3_TX_BIAS_HIGH_ALARM_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+
+    /* for SDI_MEDIA_TX_BIAS_LOW_ALARM_THRESHOLD */
+    { QSFP28_DD_R3_TX_BIAS_LOW_ALARM_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_TX_BIAS_HIGH_WARNING_THRESHOLD */
+    { QSFP28_DD_R3_TX_BIAS_HIGH_WARNING_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_TX_BIAS_LOW_WARNING_THRESHOLD */
+    { QSFP28_DD_R3_TX_BIAS_LOW_WARNING_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_TX_PWR_HIGH_ALARM_THRESHOLD */
+    { QSFP28_DD_R3_TX_PWR_HIGH_ALARM_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_TX_PWR_LOW_ALARM_THRESHOLD */
+    { QSFP28_DD_R3_TX_PWR_LOW_ALARM_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_TX_PWR_HIGH_WARNING_THRESHOLD */
+    { QSFP28_DD_R3_TX_PWR_HIGH_WARNING_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+    /* for SDI_MEDIA_TX_PWR_LOW_WARNING_THRESHOLD */
+    { QSFP28_DD_R3_TX_PWR_LOW_WARNING_THRESHOLD_OFFSET, SDI_QSFP_WORD_SIZE },
+};
+
+
+/* For some QSFP28-DD mediia using revision 0x30 and up, length code is used. One has to extract the actual length using algo below */
+/* Length code is given as such: take the lower 5 bits and multiply by the 10 ^ (upper 2 bits), all divided by 10  */
+/*This evalates to: [lower 5 bits] * pow(10, [upper 2 bits] - 1) */
+static double sdi_convert_length_code_to_length (uint8_t len_code)
+{
+    return ((LEN_CODE_MANTISSA_BITMASK & len_code) >> LEN_CODE_MANTISSA_SHIFT)
+                * pow(10, ((len_code & LEN_CODE_EXPONENT_BITMASK) >> LEN_CODE_EXPONENT_SHIFT) - 1);
+}
 
 static inline t_std_error sdi_qsfp_module_select (sdi_device_hdl_t qsfp_device)
 {
@@ -1506,6 +1566,8 @@ t_std_error sdi_qsfp_parameter_get(sdi_resource_hdl_t resource_hdl,
     uint8_t buf[4] = { 0 };
     uint_t offset = 0;
     uint_t size = 0;
+    uint16_t temp_buf = 0;
+    bool length_code_conversion_needed = false;
 
     STD_ASSERT(resource_hdl != NULL);
     STD_ASSERT(value != NULL);
@@ -1522,6 +1584,11 @@ t_std_error sdi_qsfp_parameter_get(sdi_resource_hdl_t resource_hdl,
     if (qsfp_priv_data->eeprom_version >= QSFP28_DD_EEPROM_VERSION_3) {
         offset = param_reg_info_qsfp28_dd_r3[param].offset;
         size = param_reg_info_qsfp28_dd_r3[param].size;
+
+        if (offset == QSFP28_DD_R3_LENGTH_CABLE_ASSEMBLY_OFFSET){
+             /* Assume length code is needed. Check later */
+             length_code_conversion_needed = true;
+        }
     } else {
         offset = param_reg_info[param].offset;
         size =  param_reg_info[param].size;
@@ -1539,6 +1606,22 @@ t_std_error sdi_qsfp_parameter_get(sdi_resource_hdl_t resource_hdl,
     do {
         std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
 
+        /* verify assumption that length code conversion is needed  */
+        if (length_code_conversion_needed) {
+            rc = sdi_smbus_read_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
+                   QSFP28_DD_R3_LANE_ASSIGNMENT_OFFSET, &byte_buf, SDI_I2C_FLAG_NONE);
+            if (rc != STD_ERR_OK){
+                SDI_DEVICE_ERRMSG_LOG("qsfp smbus read failed at addr : %d rc : %d",
+                        ", when attempting lane assignment read for cable  ength checking."
+                                ,qsfp_device->addr, rc);
+                length_code_conversion_needed = false;
+                break;
+            }
+
+            /* length code method is only implemented in spec versions that use non-zero lane assignment */
+            length_code_conversion_needed = (bool)(byte_buf > 0);
+        }
+
         switch (size)
         {
             case SDI_QSFP_BYTE_SIZE:
@@ -1553,7 +1636,8 @@ t_std_error sdi_qsfp_parameter_get(sdi_resource_hdl_t resource_hdl,
 
             case SDI_QSFP_WORD_SIZE:
                 rc = sdi_smbus_read_word(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
-                        offset, (uint16_t *)word_buf, SDI_I2C_FLAG_NONE);
+                        offset,&temp_buf, SDI_I2C_FLAG_NONE);
+               sdi_platform_util_write_16bit_to_bytearray_le(word_buf,temp_buf);
                 if (rc != STD_ERR_OK) {
                     SDI_DEVICE_ERRMSG_LOG("qsfp smbus read failed at addr : %d reg : %d"
                             "rc : %d", qsfp_device->addr, offset, rc);
@@ -1584,6 +1668,8 @@ t_std_error sdi_qsfp_parameter_get(sdi_resource_hdl_t resource_hdl,
                 } else {
                     *value = SDI_MEDIA_RX_PWR_OMA;
                 }
+            } else if (length_code_conversion_needed) {
+                *value = (uint_t)sdi_convert_length_code_to_length (byte_buf);
             } else {
                 *value = (uint_t)byte_buf;
             }
@@ -1688,6 +1774,7 @@ t_std_error sdi_qsfp_vendor_info_get(sdi_resource_hdl_t resource_hdl,
             }
             *buf_ptr = '\0';
         }
+
         /* vendor name, part number, serial number and revision fields contains
          * ASCII characters, left-aligned and padded on the right with ASCII
          * spaces (20h).*/
@@ -1696,6 +1783,7 @@ t_std_error sdi_qsfp_vendor_info_get(sdi_resource_hdl_t resource_hdl,
                 || (*(buf_ptr - 1) == '\0'); buf_ptr--);
         *buf_ptr = '\0';
          memcpy(vendor_info, data_buf, MIN((buf_ptr-data_buf)+1, size));
+
     }
     return rc;
 }
@@ -1770,6 +1858,8 @@ t_std_error sdi_qsfp_threshold_get (sdi_resource_hdl_t resource_hdl,
     uint_t offset = 0;
     bool paging_support_flag = true;
     uint8_t threshold_buf[2] = { 0 };
+    uint16_t temp_buf = 0;
+    uint8_t page_to_use = SDI_MEDIA_PAGE_03;
 
     STD_ASSERT(resource_hdl != NULL);
     STD_ASSERT(value != NULL);
@@ -1782,8 +1872,12 @@ t_std_error sdi_qsfp_threshold_get (sdi_resource_hdl_t resource_hdl,
         return sdi_sfp_threshold_get(qsfp_priv_data->sfp_device,
                                      threshold_type, value);
     }
-
-    offset = threshold_reg_info[threshold_type].offset;
+    if (qsfp_priv_data->eeprom_version >= QSFP28_DD_EEPROM_VERSION_3){
+        page_to_use = SDI_MEDIA_PAGE_02;
+        offset = threshold_reg_info_qsfp28_dd_r3[threshold_type].offset;
+    } else {
+        offset = threshold_reg_info[threshold_type].offset;
+    }
 
     if( offset == 0 )  {
         return SDI_DEVICE_ERRCODE(EOPNOTSUPP);
@@ -1797,8 +1891,8 @@ t_std_error sdi_qsfp_threshold_get (sdi_resource_hdl_t resource_hdl,
     do {
         std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
 
-        /* Select the page-3 of qsfp eeprom where threshold values are located */
-        rc = sdi_qsfp_page_select(qsfp_device, SDI_MEDIA_PAGE_03);
+        /* Select the appropriate eeprom page where threshold values are located */
+        rc = sdi_qsfp_page_select(qsfp_device, page_to_use);
         if(rc != STD_ERR_OK){
             if( rc == SDI_DEVICE_ERRCODE(ENOTSUP) ) {
                 paging_support_flag = false;
@@ -1810,7 +1904,8 @@ t_std_error sdi_qsfp_threshold_get (sdi_resource_hdl_t resource_hdl,
         }
 
         rc = sdi_smbus_read_word(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
-                                 offset, (uint16_t *)threshold_buf, SDI_I2C_FLAG_NONE);
+                                 offset, &temp_buf, SDI_I2C_FLAG_NONE);
+        sdi_platform_util_write_16bit_to_bytearray_le(threshold_buf,temp_buf);
         if (rc != STD_ERR_OK) {
             SDI_DEVICE_ERRMSG_LOG("qsfp smbus read failed at addr : %d reg : %d"
                                   "rc : %d", qsfp_device->addr, offset, rc);
@@ -1898,7 +1993,7 @@ t_std_error sdi_qsfp_module_monitor_get (sdi_resource_hdl_t resource_hdl,
     int volt_offset = QSFP_DD_VOLTAGE_OFFSET;
     uint8_t temp_buf[2] = { 0 };
     uint8_t volt_buf[2] = { 0 };
-
+    uint16_t word_buf = 0;
     STD_ASSERT(resource_hdl != NULL);
     STD_ASSERT(value != NULL);
 
@@ -1934,8 +2029,9 @@ t_std_error sdi_qsfp_module_monitor_get (sdi_resource_hdl_t resource_hdl,
         {
             case SDI_MEDIA_TEMP:
                 rc = sdi_smbus_read_word(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
-                        temp_offset, (uint16_t *)temp_buf,
+                        temp_offset, &word_buf,
                         SDI_I2C_FLAG_NONE);
+                sdi_platform_util_write_16bit_to_bytearray_le(temp_buf,word_buf);
                 if (rc != STD_ERR_OK){
                     SDI_DEVICE_ERRMSG_LOG("qsfp smbus read failed at addr : %d ",
                             qsfp_device->addr);
@@ -1945,7 +2041,8 @@ t_std_error sdi_qsfp_module_monitor_get (sdi_resource_hdl_t resource_hdl,
             case SDI_MEDIA_VOLT:
                 rc = sdi_smbus_read_word(qsfp_device->bus_hdl,
                         qsfp_device->addr.i2c_addr, volt_offset,
-                        (uint16_t *)volt_buf, SDI_I2C_FLAG_NONE);
+                        &word_buf, SDI_I2C_FLAG_NONE);
+                sdi_platform_util_write_16bit_to_bytearray_le(volt_buf,word_buf);
                 if (rc != STD_ERR_OK){
                     SDI_DEVICE_ERRMSG_LOG("qsfp smbus read failed at addr : %d ",
                             qsfp_device->addr);
@@ -1986,7 +2083,7 @@ t_std_error sdi_qsfp_channel_monitor_get (sdi_resource_hdl_t resource_hdl, uint_
     t_std_error rc = STD_ERR_OK;
     uint8_t buf[2] = { 0 };
     uint_t reg_offset = 0;
-
+    uint16_t temp_buf =0;
     STD_ASSERT(resource_hdl != NULL);
     STD_ASSERT(value != NULL);
 
@@ -2102,7 +2199,8 @@ t_std_error sdi_qsfp_channel_monitor_get (sdi_resource_hdl_t resource_hdl, uint_
         std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
 
         rc = sdi_smbus_read_word(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
-                reg_offset, (uint16_t *)buf, SDI_I2C_FLAG_NONE);
+                reg_offset, &temp_buf, SDI_I2C_FLAG_NONE);
+        sdi_platform_util_write_16bit_to_bytearray_le(buf,temp_buf);
         if (rc != STD_ERR_OK){
             SDI_DEVICE_ERRMSG_LOG("qsfp smbus read failed at addr : %d"
                     "reg : %d ", qsfp_device->addr, reg_offset);
@@ -3016,6 +3114,7 @@ t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
             SDI_DEVICE_ERRMSG_LOG("module reset set failed for %s", qsfp_device->alias);
             break;
         }
+        std_usleep(1000 * qsfp_priv_data->mod_reset_delay_ms);
     } while(0);
     sdi_pin_group_release_bus(qsfp_priv_data->mod_reset_hdl);
 
@@ -3028,7 +3127,6 @@ t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
 
     do {
         std_usleep(MILLI_TO_MICRO(qsfp_priv_data->delay));
-
         rc = sdi_smbus_read_multi_byte(qsfp_device->bus_hdl, qsfp_device->addr.i2c_addr,
                                 SDI_QSFP_QSA28_OUI_OFFSET, buf, sizeof(buf), SDI_I2C_FLAG_NONE);
 
@@ -3081,6 +3179,19 @@ t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
 
 t_std_error sdi_qsfp_wavelength_set (sdi_resource_hdl_t resource_hdl, float value)
 {
+    sdi_device_hdl_t qsfp_device = NULL;
+    qsfp_device_t *qsfp_priv_data = NULL;
+
+    STD_ASSERT(resource_hdl != NULL);
+
+    qsfp_device = (sdi_device_hdl_t)resource_hdl;
+    qsfp_priv_data = (qsfp_device_t *)qsfp_device->private_data;
+    STD_ASSERT(qsfp_priv_data != NULL);
+
+    if (qsfp_priv_data->mod_type == QSFP_QSA_ADAPTER) {
+        return sdi_sfp_wavelength_set(qsfp_priv_data->sfp_device, value);
+    }
+
     return SDI_DEVICE_ERRCODE(EOPNOTSUPP);
 }
 
