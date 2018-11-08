@@ -147,31 +147,9 @@ static t_std_error sdi_bmc_tmp_threshold_set(void *resource_hdl, sdi_threshold_t
  */
 static t_std_error sdi_bmc_tmp_status_get(void *resource_hdl, bool *status)
 {
-    sdi_device_hdl_t chip = NULL;
     t_std_error rc = STD_ERR_OK;
-    sdi_bmc_dev_resource_info_t *tmp_res = NULL;
-    sdi_bmc_sensor_t *sensor = NULL;
 
-    STD_ASSERT(resource_hdl != NULL);
-    STD_ASSERT(status != NULL);
-
-    chip = (sdi_device_hdl_t)resource_hdl;
-    tmp_res = (sdi_bmc_dev_resource_info_t *) chip->private_data;
-    STD_ASSERT(tmp_res != NULL);
-    if (tmp_res->data_sdr == NULL) {
-        tmp_res->data_sdr = sdi_bmc_db_sensor_get_by_name(tmp_res->data_sdr_id);
-        if (tmp_res->data_sdr == NULL) {
-            return SDI_DEVICE_ERRCODE(EINVAL);
-        }
-    }
-    sensor = tmp_res->data_sdr;
-
-    if ((sensor->res.reading.data < sensor->threshold[IPMI_LOWER_NON_RECOVERABLE])
-            || (sensor->res.reading.data > sensor->threshold[IPMI_UPPER_NON_RECOVERABLE])) {
-        *status = true;
-    } else {
-        *status = false;
-    }
+    *status = false;
 
     return rc;
 }

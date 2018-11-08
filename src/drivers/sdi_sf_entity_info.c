@@ -153,6 +153,7 @@ static void construct_date_code(char* date_str /*Of the form YYMMDD*/)
     /* Get last digit of year */
     date_str[0] = tmp_str[1];
 }
+
 t_std_error sdi_sf_entity_info_data_get(void *resource_hdl,
                                         sdi_entity_info_t *entity_info)
 {
@@ -174,6 +175,7 @@ t_std_error sdi_sf_entity_info_data_get(void *resource_hdl,
                          eeprom_data->hw_revision_end_addr, entity_info->hw_revision, SDI_HW_REV_LEN);
     entity_info_populate(chip, eeprom_data->service_tag_start_addr,
                          eeprom_data->service_tag_end_addr, entity_info->service_tag, NAME_MAX);
+
     if (eeprom_data->ppid_addr_valid == true)
     {
         entity_info_populate(chip, eeprom_data->ppid_start_addr,
@@ -360,6 +362,7 @@ static t_std_error sdi_sf_entity_info_register(std_config_node_t node,
             eeprom_data->ppid_addr_valid = true;
             break;
     }
+
     attr_value = std_config_attr_get(node, SDI_SF_ENTITY_AIR_FLOW_STATUS);
     if (attr_value != NULL) {
         eeprom_data->sf_entity_air_flow_status_hdl = sdi_get_pin_bus_handle_by_name(attr_value);

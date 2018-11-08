@@ -138,7 +138,7 @@ static void sdi_onie_fill_vendor_extn(sdi_onie_tlv_field *tlv_fld,
     if (!(parser_type == SDI_ONIE_FAN_EEPROM ||
           parser_type == SDI_ONIE_PSU_EEPROM
           )
-        ) {        
+        ) {
         return;
     };
 
@@ -147,7 +147,7 @@ static void sdi_onie_fill_vendor_extn(sdi_onie_tlv_field *tlv_fld,
     static const char premature_end[] = "Premature end of ONIE EEPROM vendor extension";
     static const char invalid_fmt[]   = "Invalid format for ONIE EEPROM vendor extension";
     const char *err_mesg = 0;
-    
+
     /* We need to understand two formats for the vendor extension (in regexp lingo):
 
        674-((PSU)|(FANTRAY))-[0-3]-MAXRPM-[0-9]+-FANS-[0-9]+-FF
@@ -207,7 +207,7 @@ static void sdi_onie_fill_vendor_extn(sdi_onie_tlv_field *tlv_fld,
         switch (parser_type) {
         case SDI_ONIE_PSU_EEPROM:
             /** Get PSU air flow and input type */
-            
+
             switch (temp) {
             case SDI_ONIE_VENDOR_EXT_PSU_TYPE_AC_NORMAL:
                 entity_data->power_type.ac_power = true;
@@ -229,10 +229,10 @@ static void sdi_onie_fill_vendor_extn(sdi_onie_tlv_field *tlv_fld,
                 err_mesg = "Invalid value for PSU type in ONIE EEPROM vendor extension";
             }
             break;
-            
+
         case SDI_ONIE_FAN_EEPROM:
             /* Get fan airflow */
-            
+
             switch (temp) {
             case SDI_ONIE_VENDOR_EXT_FAN_TRAY_TYPE_NORMAL:
                 entity_data->air_flow = SDI_PWR_AIR_FLOW_NORMAL;
@@ -344,7 +344,7 @@ static void sdi_onie_fill_tlv_entity_info(char *eeprom_buf, sdi_entity_parser_t 
         case SDI_ONIE_LABEL_VERSION_TAG:
             COPY_BYTES_TO_STRING(entity_data->hw_revision, (const char *) tlv_fld->value, (size_t) tlv_fld->length);
             break;
-                 
+
         case SDI_ONIE_PLATFORM_NAME_TAG:
             COPY_BYTES_TO_STRING(entity_data->platform_name, (const char *) tlv_fld->value, (size_t) tlv_fld->length);
             break;
@@ -364,15 +364,15 @@ static void sdi_onie_fill_tlv_entity_info(char *eeprom_buf, sdi_entity_parser_t 
             entity_data->mac_size = (tlv_fld->value[1] |
                                      (tlv_fld->value[0] << SDI_BYTE_LENGTH));
             break;
-            
+
         case SDI_ONIE_VENDOR_EXTN_TAG:
             sdi_onie_fill_vendor_extn(tlv_fld, parser_type, entity_data);
             break;
-            
+
         case SDI_ONIE_PART_NO_TAG:
             COPY_BYTES_TO_STRING(entity_data->part_number, (const char *) tlv_fld->value, (size_t) tlv_fld->length);
             break;
-            
+
         default:
             break;
         }
@@ -526,5 +526,4 @@ t_std_error sdi_onie_fan_eeprom_data_get(void *resource_hdl,
 {
     return sdi_onie_eeprom_data_get(resource_hdl, SDI_ONIE_FAN_EEPROM, entity_info);
 }
-
 

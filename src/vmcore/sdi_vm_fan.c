@@ -58,7 +58,7 @@ t_std_error sdi_fan_speed_set(sdi_resource_hdl_t fan_hdl, uint_t speed)
     if (rc != STD_ERR_OK) {
         return rc;
     }
-    
+
     /* Check if speed exceeds the allowable maximum speed */
     if (speed > max_speed) {
         return STD_ERR(BOARD, PARAM, EINVAL);
@@ -111,7 +111,7 @@ uint_t sdi_fan_speed_rpm_to_pct(sdi_resource_hdl_t fan_hdl, uint_t rpm)
     if (rc != STD_ERR_OK) {
         return rc;
     }
-    
+
     return (max_speed == 0 ? 100 : (100 * rpm) / max_speed);
 }
 
@@ -137,6 +137,6 @@ uint_t sdi_fan_speed_pct_to_rpm(sdi_resource_hdl_t fan_hdl, uint_t pct)
     if (rc != STD_ERR_OK) {
         return rc;
     }
-    
+
     return (max_speed == 0 ? max_speed : (pct * max_speed) / 100);
 }

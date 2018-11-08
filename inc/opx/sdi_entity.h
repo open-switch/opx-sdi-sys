@@ -121,6 +121,9 @@ typedef enum {
     SDI_RESOURCE_POWER_MONITOR,
     /** Resource which holds other resource's info */
     SDI_RESOURCE_BMC_DEV,
+    /** Resource for pushing temperature values for
+     *  advanced external control, e.g. fan speed control */
+    SDI_RESOURCE_EXT_CONTROL,
 
     SDI_RESOURCE_MAX            /* Always last */
 } sdi_resource_type_t;

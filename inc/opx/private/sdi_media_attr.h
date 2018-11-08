@@ -82,6 +82,10 @@
  */
 #define SDI_MEDIA_MODULE_RESET_BITMASK      "mod_reset_bitmask"
 /**
+ * @def Attribute used for representing delay required after module reset (in milliseconds)
+ */
+#define SDI_MEDIA_MODULE_RESET_DELAY_MS      "mod_reset_delay_ms"
+/**
  * @def Attribute used for representing pin group bus for setting low power mode
  */
 #define SDI_MEDIA_MODULE_LPMODE_BUS          "mod_lpmode_bus"
@@ -148,6 +152,7 @@
 #define SDI_PORT_TYPE_QSFP                      "QSFP"
 #define SDI_PORT_TYPE_QSFP28                    "QSFP28"
 #define SDI_PORT_TYPE_QSFP28_DD                 "QSFP28-DD"
+
 /**
  * @}
  */

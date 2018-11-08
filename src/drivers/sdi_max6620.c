@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Dell Inc.
+ * Copyright (c) 2016 Dell EMC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -27,7 +27,7 @@
   * control of the fans.For more information about the MAX6620, refer the data sheet in below link
   * http://datasheets.maximintegrated.com/en/ds/MAX6620.pdf
   ******************************************************************************/
-
+#include "sdi_platform_util.h"
 #include "sdi_max6620.h"
 #include "sdi_driver_internal.h"
 #include "sdi_resource_internal.h"
@@ -269,32 +269,36 @@ static t_std_error sdi_max6620_fan_tach_count_period_set(sdi_device_hdl_t device
  */
 static t_std_error sdi_max6620_fan_tach_count_get(max6620_resource_hdl_t* resource_hdl, uint_t *tach_count)
 {
-    sdi_device_hdl_t chip = NULL;
-    uint8_t buf[2] = {0};
-    uint_t fan_id = 0;
-    t_std_error rc = STD_ERR_OK;
+	sdi_device_hdl_t chip = NULL;
+	uint16_t buf = 0;
+	uint_t fan_id = 0;
+        uint8_t byte_array[2] = {0};
+	t_std_error rc = STD_ERR_OK;
 
-    STD_ASSERT(resource_hdl != NULL);
-    STD_ASSERT(tach_count != NULL);
+	STD_ASSERT(resource_hdl != NULL);
+	STD_ASSERT(tach_count != NULL);
 
-    fan_id = resource_hdl->fan_id;
+	fan_id = resource_hdl->fan_id;
 
-    chip = resource_hdl->max6620_dev_hdl;
-    STD_ASSERT(chip != NULL);
+	chip = resource_hdl->max6620_dev_hdl;
+	STD_ASSERT(chip != NULL);
 
-    rc = sdi_smbus_read_word(chip->bus_hdl, chip->addr.i2c_addr, MAX6620_FANTACHCNT(fan_id),
-                             (uint16_t*)&buf, SDI_I2C_FLAG_NONE);
-    if(rc != STD_ERR_OK)
-    {
-        SDI_DEVICE_ERRMSG_LOG("max6620 read failure at addr: %d reg: %d rc: %d\n",
-                              chip->addr.i2c_addr.i2c_addr, MAX6620_FANTACHCNT(fan_id), rc);
-        return rc;
-    }
+	rc = sdi_smbus_read_word(chip->bus_hdl, chip->addr.i2c_addr, MAX6620_FANTACHCNT(fan_id),
+			&buf, SDI_I2C_FLAG_NONE);
 
-    /* Bits-0:7 in MSB and Bits-5:7 only used in the LSB */
-    *tach_count = TACH_COUNT_VAL(buf[1],buf[0]);
+	if(rc != STD_ERR_OK) {
+		SDI_DEVICE_ERRMSG_LOG("max6620 read failure at addr: %d reg: %d rc: %d\n",
+				chip->addr.i2c_addr.i2c_addr, MAX6620_FANTACHCNT(fan_id), rc);
+		return rc;
+	}
 
-    return rc;
+	/* Bits-0:7 in MSB and Bits-5:7 only used in the LSB */
+
+        sdi_platform_util_write_16bit_to_bytearray_le(byte_array,buf);
+
+	*tach_count = TACH_COUNT_VAL(byte_array[1],byte_array[0]);
+
+	return rc;
 
 }
 
@@ -310,8 +314,8 @@ static t_std_error sdi_max6620_fan_target_tach_count_set(max6620_resource_hdl_t*
     uint8_t buf[2] = {0}, data[2] = {0};
     uint_t fan_id = 0;
     t_std_error rc = STD_ERR_OK;
-    uint16_t *pval = NULL;
-
+    uint16_t pval = 0;
+    uint16_t temp_buf =0;
     STD_ASSERT(resource_hdl != NULL);
 
     fan_id = resource_hdl->fan_id;
@@ -324,20 +328,23 @@ static t_std_error sdi_max6620_fan_target_tach_count_set(max6620_resource_hdl_t*
     data[1] = ( ( target_tach_count & 0x7   ) << 5 )& 0xff ; /*Bit 2: 0 -> 7 :5 - lsb data */
 
     rc = sdi_smbus_read_word(chip->bus_hdl, chip->addr.i2c_addr, MAX6620_FANTGTTACHCNT(fan_id),
-                             (uint16_t*)buf, SDI_I2C_FLAG_NONE);
+                             &temp_buf, SDI_I2C_FLAG_NONE);
+
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("max6620 read failure at addr: %d reg: %d rc: %d\n",
                               chip->addr.i2c_addr.i2c_addr, MAX6620_FANTGTTACHCNT(fan_id), rc);
         return rc;
     }
+    sdi_platform_util_write_16bit_to_bytearray_le(buf,temp_buf);
 
     buf[0] = data[0];
     buf[1] = (buf[1] & ~(0xE0)) | (data[1] & 0xE0);
 
-    pval = (uint16_t*)buf;
+    pval = sdi_platform_util_convert_le_to_uint16(buf);
+
     rc = sdi_smbus_write_word(chip->bus_hdl, chip->addr.i2c_addr, MAX6620_FANTGTTACHCNT(fan_id),
-                              *pval, SDI_I2C_FLAG_NONE);
+                              pval, SDI_I2C_FLAG_NONE);
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("max6620 write failure at addr: %d reg: %d rc: %d\n",
@@ -359,8 +366,8 @@ static t_std_error sdi_max6620_fan_current_drive_volt_get(max6620_resource_hdl_t
     sdi_device_hdl_t chip = NULL;
     uint_t fan_id = 0;
     uint8_t data[2] = {0};
+    uint16_t buf = 0;
     t_std_error rc = STD_ERR_OK;
-
     STD_ASSERT(resource_hdl != NULL);
 
     fan_id = resource_hdl->fan_id;
@@ -369,12 +376,17 @@ static t_std_error sdi_max6620_fan_current_drive_volt_get(max6620_resource_hdl_t
     STD_ASSERT(chip != NULL);
 
     rc = sdi_smbus_read_word(chip->bus_hdl, chip->addr.i2c_addr, MAX6620_FANTGTDRVVOLT(fan_id),
-                             (uint16_t*)data, SDI_I2C_FLAG_NONE);
+                            &buf, SDI_I2C_FLAG_NONE);
+
     if(rc != STD_ERR_OK)
     {
         SDI_DEVICE_ERRMSG_LOG("max6620 read failure at addr: %d reg: %d rc: %d\n",
                               chip->addr.i2c_addr.i2c_addr, MAX6620_FANTGTDRVVOLT(fan_id), rc);
     }
+
+
+    sdi_platform_util_write_16bit_to_bytearray_le(data,buf);
+
 
     *volt = DATA_TO_DRV_VOLT(data);
 

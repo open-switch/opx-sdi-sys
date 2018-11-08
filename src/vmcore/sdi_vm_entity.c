@@ -430,6 +430,7 @@ t_std_error sdi_entity_info_read(sdi_resource_hdl_t res_hdl, sdi_entity_info_t *
         if(NULL != (fptr=fopen("/sys/class/net/eth0/address", "r"))) {
 
             if (fgets(c, sizeof(c), fptr) == NULL) {
+                fclose(fptr);
                 return STD_ERR(BOARD, PARAM, EINVAL);
             }
             sscanf(c,

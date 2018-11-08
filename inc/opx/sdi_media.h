@@ -33,6 +33,7 @@
 #include "std_error_codes.h"
 #include "std_type_defs.h"
 #include "sdi_entity.h"
+#include <math.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -94,7 +95,7 @@ extern "C" {
 
 
 /**
- * @defgroup sdi media power info 
+ * @defgroup sdi media power info
  * @ingroup sdi_media_api
  * @{
  */
@@ -104,6 +105,11 @@ extern "C" {
  * Max power for media is undef
  */
 #define SDI_MEDIA_NO_MAX_POWER_DEFINED -1
+/**
+ * @def SDI_SFP_ZERO_WATT_POWER_IN_DBM
+ * Value of rx power for modules which do not support power reading
+ */
+#define SDI_SFP_ZERO_WATT_POWER_IN_DBM NAN
 /**
  * @}
  */
@@ -123,7 +129,7 @@ extern "C" {
 
 /**
  * @def SDI_MEDIA_MINIMUM_PAGE
- * Minimum value of page 
+ * Minimum value of page
  */
 #define SDI_MEDIA_MINIMUM_PAGE            0
 
@@ -305,7 +311,7 @@ typedef enum {
  * @enum sdi_media_page_t
  * Media eeprom page select values
  * There is one fixed lower page byte [0 ~ 127], while there are four upper pages 0 to 3, each with offset [128 ~ 255]
- * When accessing addresses less than 128, only the lower page is accessed. 
+ * When accessing addresses less than 128, only the lower page is accessed.
  * On the other hand, to read bytes 128 to 255, the upper page has to be selected (or a default of page 0 is used).
  * This means the content of bytes 128 to 255 depend on the page selected, while 0 to 127 in page-independent.
  */
@@ -339,7 +345,7 @@ typedef enum {
 /**
  * @enum sdi_media_device_addr_t
  * Device address of media for eeprom access
- * Some media are represented as separate logical i2c devices 
+ * Some media are represented as separate logical i2c devices
  */
 
 typedef enum {
@@ -359,7 +365,7 @@ typedef enum {
 /**
  * @enum sdi_media_eeprom_addr_t
  * Group of params for eeprom access
- * To be used as arguments to media eeprom access functions 
+ * To be used as arguments to media eeprom access functions
  */
 
 typedef struct _sdi_media_eeprom_addr_t {
@@ -577,6 +583,12 @@ typedef enum {
     /** Free Side device properties this field is not applicable for SFP
      */
     SDI_FREE_SIDE_DEV_PROP,
+    /** This field is valid for tunable media. SDI_MEDIA_WAVELENGTH is zero for tunable media
+     * Instead SDI_TUNE_WAVELENGTH_PICO_METERS is used, which is in picometers, not nanometers
+     * pm is used so as to avoid using floats
+     */
+    SDI_TUNE_WAVELENGTH_PICO_METERS,
+
 } sdi_media_param_type_t;
 
 /**
@@ -667,28 +679,6 @@ typedef enum {
     SDI_MEDIA_RX_PWR_AVG,
 } sdi_media_rx_pwr_type_t;
 
-/**
- * @enum sdi_qsfp_eth_1040g_code_bitmask_t
- * 10/40G Ethernet compliance codes
- */
-typedef enum {
-    /** 40G Active Cable (XLPPI) */
-    QSFP_40G_ACTIVE_CABLE = 0x01,
-    /** 40GBASE-LR4 */
-    QSFP_40GBASE_LR4 = 0x02,
-    /** 40GBASE-SR4 */
-    QSFP_40GBASE_SR4 = 0x04,
-    /** 40GBASE-CR4 */
-    QSFP_40GBASE_CR4 = 0x08,
-    /** 40GBASE-ER4 */
-    QSFP_40GBASE_ER4 = 0x10,
-    /** 10GBASE-SR */
-    QSFP_10GBASE_SR  = 0x10,
-    /** 10GBASE-LR */
-    QSFP_10GBASE_LR  = 0x20,
-    /** 10GBASE-LRM */
-    QSFP_10GBASE_LRM = 0x40,
-} sdi_qsfp_eth_1040g_code_bitmask_t;
 
 
 /*
@@ -722,6 +712,29 @@ typedef enum {
     /* 0x25 to 0x7F are reserved */
     /* 0x80 to 0xFF are vendor specific*/
 } sdi_media_connector_t;
+
+/**
+ * @enum sdi_qsfp_eth_1040g_code_bitmask_t
+ * 10/40G Ethernet compliance codes
+ */
+typedef enum {
+    /** 40G Active Cable (XLPPI) */
+    QSFP_40G_ACTIVE_CABLE = 0x01,
+    /** 40GBASE-LR4 */
+    QSFP_40GBASE_LR4 = 0x02,
+    /** 40GBASE-SR4 */
+    QSFP_40GBASE_SR4 = 0x04,
+    /** 40GBASE-CR4 */
+    QSFP_40GBASE_CR4 = 0x08,
+    /** 40GBASE-ER4 */
+    QSFP_40GBASE_ER4 = 0x10,
+    /** 10GBASE-SR */
+    QSFP_10GBASE_SR  = 0x10,
+    /** 10GBASE-LR */
+    QSFP_10GBASE_LR  = 0x20,
+    /** 10GBASE-LRM */
+    QSFP_10GBASE_LRM = 0x40,
+} sdi_qsfp_eth_1040g_code_bitmask_t;
 
 /**
  * @enum sdi_qsfp28_eth_code_bitmask_t
@@ -1118,6 +1131,7 @@ typedef struct {
     bool rate_select_status;
     bool alarm_support_status;
     bool diag_mntr_support_status;
+    bool wavelength_tune_support_status;
 } sdi_sfp_supported_feature_t;
 
 /**
@@ -1488,6 +1502,7 @@ t_std_error sdi_media_phy_mode_set (sdi_resource_hdl_t resource_hdl,
 t_std_error sdi_media_phy_speed_set (sdi_resource_hdl_t resource_hdl,
                                      uint_t channel, sdi_media_type_t type,
                                      sdi_media_speed_t *speed, uint_t count);
+
 /**
  * @brief Api to get phy link status .
  * @param[in] resource_hdl - handle to media

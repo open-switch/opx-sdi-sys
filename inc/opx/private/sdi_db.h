@@ -39,7 +39,7 @@ extern "C" {
 /**
  * @defgroup sdi_db SDI VM Database API
  * Open and close the access to the database
- * 
+ *
  * @{
  */
 
@@ -78,7 +78,7 @@ void sdi_db_reinit_database(void);
 
 /**
  * @defgroup sdi_table SDI VM DB table identifiers
- * 
+ *
  * These identifiers should be in sync with the SQL create script
  *
  * @ingroup sdi_db
@@ -113,6 +113,8 @@ void sdi_db_reinit_database(void);
 #define TABLE_MEDIA_THRESHOLD   "Media_Monitor_Thresholds"
 /** NVRAM table */
 #define TABLE_NVRAM             "NVRAM"
+/** Writable External Control */
+#define TABLE_EXT_CTRL          "External_Ctrl"
 
 /**
  * @}
@@ -192,6 +194,8 @@ void sdi_db_reinit_database(void);
 /**
  * @}
  */
+
+#define TABLE_EXT_CTRL_VAL "Value"
 
 /** @defgroup sdi_table_fan SDI VM DB Fan table fields
  *
@@ -610,7 +614,7 @@ t_std_error sdi_db_resource_get_parent_entity(db_sql_handle_t db_handle,
 
 /**
  * @brief Get associated info handle for a resource
- * 
+ *
  * For any given resource, retrieve the resource handle of its associated info
  * structure.
  *

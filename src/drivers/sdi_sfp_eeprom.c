@@ -38,6 +38,7 @@
 #include "std_assert.h"
 #include "std_time_tools.h"
 #include "std_bit_ops.h"
+#include "sdi_platform_util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,6 +53,9 @@
    SGMII mode for phy device */
 #define PHY_SGMII_MODE 0x9084
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
+
+static t_std_error sdi_is_wavelength_tune_supported (sdi_device_hdl_t sfp_device, bool* status);
+static t_std_error sdi_sfp_page_select (sdi_device_hdl_t sfp_device, uint_t page);
 
  /*SFP parameter sizes */
 enum {
@@ -98,6 +102,9 @@ static sdi_sfp_reg_info_t param_reg_info[] = {
     { SFP_MIN_BITRATE_OFFSET, SDI_SFP_BYTE_SIZE }, /* for SDI_MEDIA_MIN_BITRATE */
     { SFP_EXT_COMPLIANCE_CODE_OFFSET, SDI_SFP_BYTE_SIZE}, /* for SDI_MEDIA_EXT_COMPLIANCE_CODE */
     { 0, 0 }, /* For SDI_FREE_SIDE_DEV_PROP , not applicable for SFP */
+
+    /* Note this offset is in device A2, page 02 */
+    { SFP_WAVELENGTH_SET_OFFSET, SDI_SFP_WORD_SIZE}, /* For SDI_TUNE_WAVELENGTH_PICO_METERS*/
 };
 
 /* vendor register information structure. Parameters in this structure should be
@@ -420,7 +427,7 @@ static inline float convert_sfp_volt(uint8_t *buf, sfp_calib_info_t *calib_info)
  *                    Rx_PWR(1) * Rx_PWRAD (16 bit unsigned integer) +
  *                    Rx_PWR(0)
  * The result is in units of 0.1uW yielding a total range of 0 – 6.5mW.
- * The final result then gets converted to dbm. A value of 0mW yields SDI_SFP_ZERO_WATT_POWER_IN_DBM 
+ * The final result then gets converted to dbm. A value of 0mW yields SDI_SFP_ZERO_WATT_POWER_IN_DBM
  * */
 static inline float convert_sfp_rx_power(uint8_t *buf, sfp_rx_power_calib_info_t *calib_info)
 {
@@ -1149,6 +1156,8 @@ t_std_error sdi_sfp_parameter_get(sdi_resource_hdl_t resource_hdl,
     uint8_t word_buf[2] = { 0 } ;
     uint_t offset = 0;
     uint_t size = 0;
+    uint16_t temp_buf = 0;
+    bool wavelength_tune_sup_status = false;
 
     STD_ASSERT(resource_hdl != NULL);
     STD_ASSERT(value != NULL);
@@ -1172,6 +1181,58 @@ t_std_error sdi_sfp_parameter_get(sdi_resource_hdl_t resource_hdl,
     }
 
     do {
+
+        /* For wavelength request, check if media is tunable */
+        if (param == SDI_MEDIA_WAVELENGTH) {
+           rc = sdi_is_wavelength_tune_supported(sfp_device, &wavelength_tune_sup_status);
+           if (rc != STD_ERR_OK){
+               SDI_DEVICE_ERRMSG_LOG("Wavelength tune support status get failed for module %s, rc %u",
+                   sfp_device->alias, rc);
+               break;
+            }
+        }
+        /* This special case requires page select and i2c device A2h */
+        if ((param == SDI_TUNE_WAVELENGTH_PICO_METERS) || (wavelength_tune_sup_status)) {
+
+            rc = sdi_sfp_page_select(sfp_device, SDI_SFP_TUNABLE_PAGE);
+            if (rc != STD_ERR_OK) {
+                SDI_DEVICE_ERRMSG_LOG("Page select failed for %s, rc %u ",
+                        sfp_device->alias, rc);
+                break;
+            }
+
+            /* Wavelength is 2 byte big endian */
+            rc = sdi_smbus_read_byte(sfp_device->bus_hdl,
+                sfp_i2c_addr, SFP_WAVELENGTH_SET_OFFSET, &byte_buf, SDI_I2C_FLAG_NONE);
+            if (rc != STD_ERR_OK) {
+                SDI_DEVICE_ERRMSG_LOG("Tunable wavelength read failed for module %s", sfp_device->alias);
+                return rc;
+                break;
+            }
+            *value = (uint_t)(byte_buf << 8);
+            rc = sdi_smbus_read_byte(sfp_device->bus_hdl,
+                sfp_i2c_addr, SFP_WAVELENGTH_SET_OFFSET + 1, &byte_buf, SDI_I2C_FLAG_NONE);
+            if (rc != STD_ERR_OK) {
+                SDI_DEVICE_ERRMSG_LOG("Tunable wavelength read failed for module %s", sfp_device->alias);
+                return rc;
+                break;
+            }
+            *value |= byte_buf;
+
+            /* convert to nm, if pico meters requested, further multiply by 1000  */
+            *value *= (param == SDI_TUNE_WAVELENGTH_PICO_METERS) ? (SDI_FREQ_WAVELENGTH_DIVISION_FACTOR * 1000)
+                                                                 : SDI_FREQ_WAVELENGTH_DIVISION_FACTOR;
+
+            /* Return page select to default */
+            rc = sdi_sfp_page_select(sfp_device, SDI_SFP_DEFAULT_PAGE);
+            if (rc != STD_ERR_OK) {
+                SDI_DEVICE_ERRMSG_LOG("Page select (default page) failed for %s, rc %u ",
+                        sfp_device->alias, rc);
+                break;
+            }
+            break;
+        }
+
         switch (size)
         {
             case SDI_SFP_BYTE_SIZE:
@@ -1184,8 +1245,12 @@ t_std_error sdi_sfp_parameter_get(sdi_resource_hdl_t resource_hdl,
                 break;
 
             case SDI_SFP_WORD_SIZE:
+
                 rc = sdi_smbus_read_word(sfp_device->bus_hdl, sfp_device->addr.i2c_addr, offset,
-                                         (uint16_t *)word_buf, SDI_I2C_FLAG_NONE);
+                                       &temp_buf, SDI_I2C_FLAG_NONE);
+
+                sdi_platform_util_write_16bit_to_bytearray_le(word_buf,temp_buf);
+
                 if (rc != STD_ERR_OK) {
                     SDI_DEVICE_ERRMSG_LOG("sfp smbus read failed at addr : %d reg : %d for %s rc : %d",
                             sfp_device->addr, offset, sfp_device->alias, rc);
@@ -1199,7 +1264,7 @@ t_std_error sdi_sfp_parameter_get(sdi_resource_hdl_t resource_hdl,
 
     sdi_sfp_module_deselect(sfp_priv_data);
 
-    if(rc == STD_ERR_OK) {
+	if((rc == STD_ERR_OK) && (param != SDI_TUNE_WAVELENGTH_PICO_METERS) && (!wavelength_tune_sup_status)) {
         if(size == SDI_SFP_BYTE_SIZE) {
             *value = (uint_t)byte_buf;
         } else if(size == SDI_SFP_WORD_SIZE) {
@@ -1276,6 +1341,7 @@ t_std_error sdi_sfp_vendor_info_get(sdi_resource_hdl_t resource_hdl,
             }
             *buf_ptr = '\0';
         }
+
         /* vendor name, part number, serial number and revision fields contains
          * ASCII characters, left-aligned and padded on the right with ASCII
          * spaces (20h).*/
@@ -1365,6 +1431,7 @@ t_std_error sdi_sfp_threshold_get(sdi_resource_hdl_t resource_hdl,
     uint_t diag_mon_value = 0;
     uint_t offset = 0;
     uint8_t threshold_buf[2] = { 0 };
+    uint16_t temp_buf = 0;
     sfp_calib_info_t calib_info = { 0 };
     uint_t slope_offset = 0;
     uint_t const_offset = 0;
@@ -1454,7 +1521,8 @@ t_std_error sdi_sfp_threshold_get(sdi_resource_hdl_t resource_hdl,
 
     do {
         rc = sdi_smbus_read_word(sfp_device->bus_hdl, sfp_i2c_addr,
-                offset, (uint16_t *)threshold_buf, SDI_I2C_FLAG_NONE);
+                offset,&temp_buf, SDI_I2C_FLAG_NONE);
+        sdi_platform_util_write_16bit_to_bytearray_le(threshold_buf,temp_buf);
         if(rc != STD_ERR_OK) {
             SDI_DEVICE_ERRMSG_LOG("smbus read failed for threshold values with rc : %d", rc);
             break;
@@ -1471,7 +1539,8 @@ t_std_error sdi_sfp_threshold_get(sdi_resource_hdl_t resource_hdl,
                 }
             } else {
                 rc = sdi_smbus_read_word(sfp_device->bus_hdl, sfp_i2c_addr, slope_offset,
-                        (uint16_t *)&calib_info.slope, SDI_I2C_FLAG_NONE);
+                      &temp_buf, SDI_I2C_FLAG_NONE);
+                sdi_platform_util_write_16bit_to_bytearray_le((calib_info.slope),temp_buf);
                 if (rc != STD_ERR_OK){
                     SDI_DEVICE_ERRMSG_LOG("smbus read failed for temp slope constant rc : %d",rc);
                     break;
@@ -1629,7 +1698,7 @@ t_std_error sdi_sfp_module_monitor_value_read(sdi_i2c_bus_hdl_t bus_hdl, uint_t 
                                               uint_t vs_offset, uint_t vc_offset)
 {
     t_std_error rc = STD_ERR_OK;
-
+    uint16_t temp_buf = 0;
     STD_ASSERT(bus_hdl != NULL);
     STD_ASSERT(calib_info != NULL);
     STD_ASSERT(buf != NULL);
@@ -1643,7 +1712,8 @@ t_std_error sdi_sfp_module_monitor_value_read(sdi_i2c_bus_hdl_t bus_hdl, uint_t 
 
     if(calib_info->type == SFP_CALIB_TYPE_EXTERNAL) {
         rc = sdi_smbus_read_word(bus_hdl, sfp_i2c_addr, vs_offset,
-                (uint16_t *)&calib_info->slope, SDI_I2C_FLAG_NONE);
+               &temp_buf, SDI_I2C_FLAG_NONE);
+        sdi_platform_util_write_16bit_to_bytearray_le(calib_info->slope,temp_buf);
         if (rc != STD_ERR_OK){
             SDI_DEVICE_ERRMSG_LOG("smbus read failed for temp slope constant rc : %d",rc);
             return rc;
@@ -1902,6 +1972,13 @@ t_std_error sdi_sfp_feature_support_status_get (sdi_resource_hdl_t resource_hdl,
         if (rc != STD_ERR_OK){
             break;
         }
+
+        rc = sdi_is_wavelength_tune_supported(sfp_device,
+                                          &feature_support->sfp_features.wavelength_tune_support_status);
+        if (rc != STD_ERR_OK){
+            break;
+        }
+
     }while(0);
 
     sdi_sfp_module_deselect(sfp_priv_data);
@@ -1969,7 +2046,7 @@ t_std_error sdi_sfp_read_generic (sdi_resource_hdl_t resource_hdl, sdi_media_eep
 /**
  * Raw write api for media eeprom
  * resource_hdl[in] - Handle of the resource
- * addr[in]          - pointer to struct that holds address and offset info 
+ * addr[in]          - pointer to struct that holds address and offset info
  * data[in]      - Data to write
  * data_len[in]     - length of the data to be written
  * return           - t_std_error
@@ -2155,6 +2232,7 @@ t_std_error sdi_sfp_phy_speed_set(sdi_resource_hdl_t resource_hdl, uint_t channe
     }
 
     rc = sdi_cusfp_phy_speed_set(sfp_device, speed);
+
     sdi_sfp_module_deselect(sfp_priv_data);
 
     return rc;
@@ -2163,7 +2241,7 @@ t_std_error sdi_sfp_phy_speed_set(sdi_resource_hdl_t resource_hdl, uint_t channe
 /**
  * Get media PHY link status.
  * resource_hdl[in] - Handle of the resource
- * channel[in]      - channel number 
+ * channel[in]      - channel number
  * type             - media type
  * status           - true - link up, false - link down
  * return           - t_std_error
@@ -2196,7 +2274,7 @@ t_std_error sdi_sfp_phy_link_status_get (sdi_resource_hdl_t resource_hdl, uint_t
 /**
  * Set power down state (enable/disable) on media PHY.
  * resource_hdl[in] - Handle of the resource
- * channel[in]      - channel number 
+ * channel[in]      - channel number
  * type             - media type
  * enable           - true - power down, false - power up
  * return           - t_std_error
@@ -2230,7 +2308,7 @@ t_std_error sdi_sfp_phy_power_down_enable (sdi_resource_hdl_t resource_hdl, uint
 /**
  * Control (enable/disable) Fiber/Serdes tx and RX on media PHY.
  * resource_hdl[in] - Handle of the resource
- * channel[in]      - channel number 
+ * channel[in]      - channel number
  * type             - media type
  * enable           - true - Enable Serdes, false - Disable Serdes
  * return           - t_std_error
@@ -2273,6 +2351,220 @@ t_std_error sdi_sfp_module_init (sdi_resource_hdl_t resource_hdl, bool pres)
     return STD_ERR_OK;
 }
 
+
+/* See SFF 8690 for all wavelength set related spec */
+
+/* Checks if wavelength tuning is supported */
+/* Resides in device A0 */
+static t_std_error sdi_is_wavelength_tune_supported (sdi_device_hdl_t sfp_device, bool* status)
+{
+    uint8_t buf;
+    t_std_error rc = STD_ERR_OK;
+
+    STD_ASSERT(sfp_device != NULL);
+    STD_ASSERT(status != NULL);
+    rc = sdi_smbus_read_byte(sfp_device->bus_hdl, sfp_device->addr.i2c_addr,
+        SFP_OPTIONS2_OFFSET, &buf, SDI_I2C_FLAG_NONE);
+    if (rc != STD_ERR_OK){
+        SDI_DEVICE_ERRMSG_LOG("sfp smbus read failed at addr : %d for %s rc : %d",
+            sfp_device->addr, sfp_device->alias, rc);
+        return rc;
+    }
+    *status = (bool)(buf & SDI_SFP_TUNABLE_SUPPORT_BITMASK);
+    return rc;
+}
+
+/* This implements page select for SFP */
+static t_std_error sdi_sfp_page_select (sdi_device_hdl_t sfp_device, uint_t page)
+{
+    t_std_error rc = STD_ERR_OK;
+
+    STD_ASSERT(sfp_device != NULL);
+    rc = sdi_smbus_write_byte(sfp_device->bus_hdl,
+        sfp_i2c_addr, SFP_PAGE_SELECT_BYTE_OFFSET, page, SDI_I2C_FLAG_NONE);
+    if (rc != STD_ERR_OK) {
+        SDI_DEVICE_ERRMSG_LOG("Page %u select failed for module %s", page, sfp_device->alias);
+        return rc;
+    }
+
+    return rc;
+}
+
+static t_std_error sdi_sfp_get_tunable_capabilities (sdi_device_hdl_t sfp_device, sdi_sfp_tunable_capabilities_t* tune_cap)
+{
+    uint8_t support_buf = 0;
+    uint8_t capabilities_buf[SDI_SFP_TUNABLE_FREQ_CAPABILITIES_LEN] = {0};
+    float min_freq_int_part = 0.0, min_freq_frac_part = 0.0;
+    float max_freq_int_part = 0.0, max_freq_frac_part = 0.0;
+    float grid_spacing = 0.0;
+    t_std_error rc = STD_ERR_OK;
+
+
+    STD_ASSERT(sfp_device != NULL);
+    STD_ASSERT(tune_cap != NULL);
+
+    rc = sdi_smbus_read_byte(sfp_device->bus_hdl, sfp_i2c_addr,
+        SFP_TUNE_TYPE_SUPPORT_OFFSET, &support_buf, SDI_I2C_FLAG_NONE);
+    if (rc != STD_ERR_OK){
+        SDI_DEVICE_ERRMSG_LOG("sfp smbus read failed at addr : %d for %s rc : %d",
+            sfp_device->addr, sfp_device->alias, rc);
+        return rc;
+    }
+
+    tune_cap->channel_set_support = (bool)STD_BIT_TEST(support_buf, SDI_SFP_TX_FREQ_CHANNEL_TUNE_SUPPORT_BITMASK);
+    tune_cap->wavelength_set_support = (bool)STD_BIT_TEST(support_buf, SDI_SFP_TX_WAVELENGTH_TUNE_SUPPORT_BITMASK);
+
+    /* if none of the tune methods is supported, return  */
+    if (!((tune_cap->channel_set_support) | (tune_cap->wavelength_set_support))) {
+        rc = SDI_DEVICE_ERRCODE(EOPNOTSUPP);
+        SDI_DEVICE_ERRMSG_LOG("Attempt to get tunable support info on unsupported module %s",
+            sfp_device->alias);
+        return rc;
+    }
+    rc = sdi_smbus_read_multi_byte(sfp_device->bus_hdl, sfp_i2c_addr,
+        SFP_TUNABLE_FREQ_CAPABILITIES_OFFSET, capabilities_buf,
+            sizeof(capabilities_buf)/sizeof(capabilities_buf[0]), SDI_I2C_FLAG_NONE);
+    if (rc != STD_ERR_OK){
+        SDI_DEVICE_ERRMSG_LOG("sfp smbus read failed at addr %d for %s rc : %d",
+            sfp_device->addr, sfp_device->alias, rc);
+        return rc;
+    }
+
+    /* data is in big endian */
+    min_freq_int_part = SDI_TWO_BYTE_TO_UINT16(
+        capabilities_buf[SDI_SFP_CAPABILITIES_MIN_FREQ_INT_PART_MSB_BYTE_POS],
+        capabilities_buf[SDI_SFP_CAPABILITIES_MIN_FREQ_INT_PART_LSB_BYTE_POS]);
+    min_freq_frac_part = SDI_TWO_BYTE_TO_UINT16(
+        capabilities_buf[SDI_SFP_CAPABILITIES_MIN_FREQ_FRAC_PART_MSB_BYTE_POS],
+        capabilities_buf[SDI_SFP_CAPABILITIES_MIN_FREQ_FRAC_PART_LSB_BYTE_POS]);
+    max_freq_int_part = SDI_TWO_BYTE_TO_UINT16(
+        capabilities_buf[SDI_SFP_CAPABILITIES_MAX_FREQ_INT_PART_MSB_BYTE_POS],
+        capabilities_buf[SDI_SFP_CAPABILITIES_MAX_FREQ_INT_PART_LSB_BYTE_POS]);
+    max_freq_frac_part = SDI_TWO_BYTE_TO_UINT16(
+        capabilities_buf[SDI_SFP_CAPABILITIES_MAX_FREQ_FRAC_PART_MSB_BYTE_POS],
+        capabilities_buf[SDI_SFP_CAPABILITIES_MAX_FREQ_FRAC_PART_LSB_BYTE_POS]);
+    grid_spacing = SDI_TWO_BYTE_TO_UINT16(
+        capabilities_buf[SDI_SFP_CAPABILITIES_GRID_SPACING_MSB_BYTE_POS],
+        capabilities_buf[SDI_SFP_CAPABILITIES_GRID_SPACING_LSB_BYTE_POS]);
+
+    tune_cap->min_freq = SDI_FREQ_JOIN(min_freq_int_part, min_freq_frac_part);
+    tune_cap->max_freq = SDI_FREQ_JOIN(max_freq_int_part, max_freq_frac_part);
+
+    if (tune_cap->max_freq < tune_cap->min_freq) {
+        /* Something really went wrong */
+        rc = SDI_DEVICE_ERRCODE(EBADMSG);
+        SDI_DEVICE_ERRMSG_LOG("Read bad freqency data on module %s",
+            sfp_device->alias);
+        return rc;
+    }
+    /* convert grid spacing from 0.1GHz units to THz */
+    tune_cap->grid_spacing = (float)grid_spacing / SDI_FREQ_FRACTIONAL_PART_DIVISION_FACTOR;
+    tune_cap->channel_count = SDI_GET_CHANNEL_NO_FROM_FREQ(tune_cap->max_freq, tune_cap->min_freq, tune_cap->grid_spacing);
+    return rc;
+}
+
+
+
+/* Takes wavelength in nanometers */
+static t_std_error sdi_sfp_set_tunable_module_by_wavelength (sdi_device_hdl_t sfp_device,
+                    sdi_sfp_tunable_capabilities_t* tune_cap, float wavelength_nm)
+{
+    float target_freq_thz = 0.0;
+    uint16_t target_channel_number = 0;
+    t_std_error rc = STD_ERR_OK;
+    uint16_t wavelength_to_write = 0; /* write wavelength as 16 bit num in units of 0.05nm */
+
+
+    target_freq_thz = WAVELENGTH_NM_TO_FREQ_THZ(wavelength_nm);
+
+    /* check that freq corresponding to given wavelength is not out of bounds */
+    if ( (target_freq_thz > tune_cap->max_freq) || (target_freq_thz < tune_cap->min_freq)) {
+        rc = SDI_DEVICE_ERRCODE(EINVAL);
+        SDI_DEVICE_ERRMSG_LOG("Out of bounds! Cannot set wavelength %fnm on module %d. "
+            ,"Valid range is %fnm to %fnm"
+            , FREQ_THZ_TO_WAVELENGTH_NM(target_freq_thz), sfp_device->alias
+            , WAVELENGTH_NM_TO_FREQ_THZ(tune_cap->min_freq), WAVELENGTH_NM_TO_FREQ_THZ(tune_cap->max_freq));
+        return rc;
+    }
+
+    wavelength_to_write = (uint16_t)(wavelength_nm / SDI_FREQ_WAVELENGTH_DIVISION_FACTOR);
+    target_channel_number = (uint16_t)SDI_GET_CHANNEL_NO_FROM_FREQ(target_freq_thz, tune_cap->min_freq, tune_cap->grid_spacing);
+
+    /* Now choose which way to set wavelength. One can use channel or direct wavelength write */
+    /* Channel set gets priority since int is easier to deal with and less chance of float errors */
+    /* All reads/writes are big endian */
+    if (tune_cap->channel_set_support) {
+        rc = sdi_smbus_write_byte(sfp_device->bus_hdl,
+            sfp_i2c_addr, SFP_CHANNEL_NUMBER_SET_OFFSET, (uint8_t)(target_channel_number >> 8), SDI_I2C_FLAG_NONE);
+        if (rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Wavelength set failed for module %s", sfp_device->alias);
+            return rc;
+        }
+        rc = sdi_smbus_write_byte(sfp_device->bus_hdl,
+            sfp_i2c_addr, SFP_CHANNEL_NUMBER_SET_OFFSET+1, (uint8_t)(target_channel_number), SDI_I2C_FLAG_NONE);
+        if (rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Wavelength set failed for module %s", sfp_device->alias);
+            return rc;
+        }
+    } else if (tune_cap->wavelength_set_support) {
+        rc = sdi_smbus_write_byte(sfp_device->bus_hdl,
+            sfp_i2c_addr, SFP_WAVELENGTH_SET_OFFSET, (uint8_t)(wavelength_to_write >> 8), SDI_I2C_FLAG_NONE);
+        if (rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Wavelength set failed for module %s", sfp_device->alias);
+            return rc;
+        }
+        rc = sdi_smbus_write_byte(sfp_device->bus_hdl,
+            sfp_i2c_addr, SFP_WAVELENGTH_SET_OFFSET+1, (uint8_t)(wavelength_to_write), SDI_I2C_FLAG_NONE);
+        if (rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Wavelength set failed for module %s", sfp_device->alias);
+            return rc;
+        }
+    } else {
+        rc = SDI_DEVICE_ERRCODE(EOPNOTSUPP);
+        SDI_DEVICE_ERRMSG_LOG("Attempt to set wavelength on unsupported module %s",
+            sfp_device->alias);
+        return rc;
+    }
+
+    return rc;
+}
+
+/* This function is a simplistic solution to get the status of the wavelength set operation */
+/* This function can take up to 100ms to complete. Uses blocking delays */
+static t_std_error sdi_sfp_tune_set_status_get (sdi_device_hdl_t sfp_device, bool* status)
+{
+    uint_t elapsed_time_ms = 0;
+    uint8_t unlatched_status = ~0;
+    uint8_t latched_status = ~0;
+    t_std_error rc = STD_ERR_OK;
+
+    STD_ASSERT(sfp_device != NULL);
+    STD_ASSERT(status != NULL);
+    *status =  false;
+
+    while (elapsed_time_ms < SDI_WAVELENGTH_SET_TIMEOUT_MS){
+        rc = sdi_smbus_read_byte(sfp_device->bus_hdl, sfp_i2c_addr,
+            SFP_TUNE_TYPE_SUPPORT_OFFSET, &unlatched_status, SDI_I2C_FLAG_NONE);
+        if (rc != STD_ERR_OK){
+            SDI_DEVICE_ERRMSG_LOG("sfp smbus read failed at addr : %d for %s rc : %d",
+                sfp_device->addr, sfp_device->alias, rc);
+        }
+        rc = sdi_smbus_read_byte(sfp_device->bus_hdl, sfp_i2c_addr,
+            SFP_TUNE_TYPE_SUPPORT_OFFSET, &latched_status, SDI_I2C_FLAG_NONE);
+        if (rc != STD_ERR_OK){
+            SDI_DEVICE_ERRMSG_LOG("sfp smbus read failed at addr : %d for %s rc : %d",
+                sfp_device->addr, sfp_device->alias, rc);
+        }
+        if (TEST_UNLATCHED_STATUS(unlatched_status) && (TEST_LATCHED_STATUS(latched_status))){
+            *status = true;
+            break;
+        }
+        std_usleep(SDI_WAVELENGTH_SET_POLL_PERIOD_MS * 1000);
+        elapsed_time_ms +=SDI_WAVELENGTH_SET_POLL_PERIOD_MS;
+    }
+    return rc;
+}
+
 /*
  * @brief Set wavelength for tunable media
  * @param[in]  - resource_hdl - handle to the front panel port
@@ -2284,10 +2576,9 @@ t_std_error sdi_sfp_wavelength_set (sdi_resource_hdl_t resource_hdl, float value
     sdi_device_hdl_t sfp_device = NULL;
     sfp_device_t *sfp_priv_data = NULL;
     t_std_error rc = STD_ERR_OK;
-    uint8_t buf = 0;
-    uint8_t word_buf[2] = {0, 0};
-    uint_t wavelength = 0;
-    uint16_t *pval = NULL;
+
+    bool status = false;
+    sdi_sfp_tunable_capabilities_t tune_cap;
 
 
     STD_ASSERT(resource_hdl != NULL);
@@ -2295,37 +2586,78 @@ t_std_error sdi_sfp_wavelength_set (sdi_resource_hdl_t resource_hdl, float value
     sfp_priv_data = (sfp_device_t *)sfp_device->private_data;
     STD_ASSERT(sfp_priv_data != NULL);
 
+    if (value <= 0.0) {
+        SDI_DEVICE_ERRMSG_LOG("Invalid argument. Wavelength cannot be negative. Module %s "
+            , sfp_device->alias);
+        return SDI_DEVICE_ERRCODE(EINVAL);
+    }
+
     rc = sdi_sfp_module_select(sfp_device);
     if(rc != STD_ERR_OK) {
         return rc;
     }
 
     do {
-        rc = sdi_smbus_read_byte(sfp_device->bus_hdl,
-                sfp_device->addr.i2c_addr,SFP_OPTIONS_OFFSET + 1,
-                &buf, SDI_I2C_FLAG_NONE);
 
+        /* First check for tunable support */
+        rc = sdi_is_wavelength_tune_supported (sfp_device, &status);
         if (rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Failed to read tunable suppport status on module %s",
+                sfp_device->alias);
+            break;
+        }
+        if (!status) {
+            SDI_DEVICE_ERRMSG_LOG("Attempt to set wavelength on unsupported module %s",
+                sfp_device->alias);
             break;
         }
 
-        if (STD_BIT_TEST(buf, SFP_TX_TECH_TUNABLE_OFFSET) == 0) {
-            rc = SDI_DEVICE_ERRCODE(EOPNOTSUPP);
+        /* Since all tunable controls are in dev A2, page 02, page 02 needs to be selected on device A2 */
+        rc = sdi_sfp_page_select (sfp_device, SDI_SFP_TUNABLE_PAGE);
+        if (rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Failed to select page %u on module %s", SDI_SFP_TUNABLE_PAGE,
+                sfp_device->alias);
             break;
         }
 
-        wavelength = value * 20;
-        word_buf[0] = wavelength >> 8;
-        word_buf[1] = wavelength & 0xFF;
-
-        pval = (uint16_t *) word_buf;
-
-        rc = sdi_smbus_write_word(sfp_device->bus_hdl,
-                sfp_i2c_addr, SFP_TARGET_WAVELENGTH_OFFSET,
-                *pval, SDI_I2C_FLAG_NONE);
+        /* Now get the actual tunable capabilities of module. See sdi_sfp_tunable_capabilities_t */
+        rc = sdi_sfp_get_tunable_capabilities (sfp_device, &tune_cap);
         if (rc != STD_ERR_OK) {
-            SDI_DEVICE_ERRMSG_LOG("Setting target wavelength failed for %s rc : %d",
-                    sfp_device->alias, rc);
+            SDI_DEVICE_ERRMSG_LOG("Failed to get tunable module capabilities on module %s",
+                sfp_device->alias);
+            break;
+        }
+
+        /* Finally set the wavelength, given the module capabilities  */
+        rc = sdi_sfp_set_tunable_module_by_wavelength (sfp_device, &tune_cap, value);
+        if (rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Failed to set wavelength %f on tunable module %s",
+                value, sfp_device->alias);
+            break;
+        }
+
+        /* After setting the desired wavelength, the operation may fail for multiple reasons */
+        /* So one needs to get the status by polling the status registers for up to SDI_WAVELENGTH_SET_TIMEOUT_MS */
+        /* Status poll is blocking */
+        rc = sdi_sfp_tune_set_status_get (sfp_device, &status);
+        if (rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Failed to get status of wavelength set on module %s",
+                sfp_device->alias);
+            break;
+        }
+        if (!status) {
+            rc = SDI_DEVICE_ERRCODE(~STD_ERR_OK);
+            SDI_DEVICE_ERRMSG_LOG("Wavelength set failed on module %s",
+                sfp_device->alias);
+            break;
+        }
+
+        /* Return page select to default  */
+        rc = sdi_sfp_page_select (sfp_device, SDI_SFP_DEFAULT_PAGE);
+        if (rc != STD_ERR_OK) {
+            SDI_DEVICE_ERRMSG_LOG("Failed to select default page on module %s",
+                sfp_device->alias);
+            break;
         }
 
     } while (0);
@@ -2334,6 +2666,7 @@ t_std_error sdi_sfp_wavelength_set (sdi_resource_hdl_t resource_hdl, float value
 
     return rc;
 }
+
 
 t_std_error sdi_sfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
                                    sdi_qsa_adapter_type_t* qsa_adapter) {

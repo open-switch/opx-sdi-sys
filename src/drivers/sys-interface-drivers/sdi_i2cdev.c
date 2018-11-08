@@ -229,7 +229,6 @@ static t_std_error sdi_i2cdev_acquire_bus (sdi_i2c_bus_hdl_t i2c_bus)
 }
 
 
-/* Run a script to attempt to clear locked-up I2C controller */
 
 static void i2c_reset(const char *func, int fd, sdi_smbus_operation_t operation, sdi_smbus_data_type_t data_type, uint_t commandbuf)
 {
@@ -262,8 +261,6 @@ static void i2c_reset(const char *func, int fd, sdi_smbus_operation_t operation,
     return;
 }
 
-
-
 /**
  * sdi_sys_smbus_execute
  * Execute the I2C SMBUS transaction by issuing an ioctl to kernel smbus driver
@@ -289,7 +286,6 @@ static t_std_error sdi_sys_smbus_execute(int i2cdev_fd,
     do {
         error = ioctl(i2cdev_fd, I2C_SMBUS, &cmd);
         if (error != STD_ERR_OK) {
-            i2c_reset(__FUNCTION__, i2cdev_fd, operation, data_type, commandbuf);
             retry_count--;
             std_usleep(SDI_IIC_WAIT_TIME);
         }
@@ -301,7 +297,7 @@ static t_std_error sdi_sys_smbus_execute(int i2cdev_fd,
         SDI_DEVICE_ERRMSG_LOG("%s:%d smbus transaction on i2cdev_fd %d,"
                 "operation %d command %d size %d data %p failed with error %d and errno:0x%x\n",
                 __FUNCTION__, __LINE__, i2cdev_fd, operation, commandbuf, data_type,
-                data, error, errno); 
+                data, error, errno);
         error = SDI_DEVICE_ERRNO;
         if ((errno == EIO) || (errno == ETIMEDOUT)) {
             /* attempt to recover from i2c bus hang if IO error or connection timedout*/
@@ -909,30 +905,13 @@ static t_std_error sdi_i2cdev_driver_register(std_config_node_t node,
     }
 
     str = std_config_attr_get(node, SDI_DEV_ATTR_SYSFS_NAME);
-    if (str != NULL) {
-        safestrncpy(sys_i2c_bus->kernel_sysfs_name,
-                    str,
-                    sizeof(sys_i2c_bus->kernel_sysfs_name)
-                    );
-    }
+    STD_ASSERT(str!=NULL);
+    safestrncpy(sys_i2c_bus->kernel_sysfs_name, str, PATH_MAX);
 
     str = std_config_attr_get(node, SDI_DEV_ATTR_DEV_NAME);
     if (str != NULL) {
         /*fill the dev name directly if it is passed*/
-        safestrncpy(sys_i2c_bus->kernel_i2cdev_name,
-                    str,
-                    sizeof(sys_i2c_bus->kernel_i2cdev_name)
-                    );
-    }
-
-    if (sys_i2c_bus->kernel_sysfs_name[0] == 0
-        && sys_i2c_bus->kernel_i2cdev_name[0] == 0
-        ) {
-        error = SDI_DEVICE_ERRNO;
-        free(sys_i2c_bus);
-        SDI_DEVICE_ERRMSG_LOG("%s:%d i2c bus %u \n No sysfs or dev name given",
-            __FUNCTION__, __LINE__, i2c_bus->bus.bus_id);
-        return error;
+        safestrncpy(sys_i2c_bus->kernel_i2cdev_name, str, PATH_MAX);
     }
 
     sys_i2c_bus->i2cdev_fd = INVALID_FILE_FD;

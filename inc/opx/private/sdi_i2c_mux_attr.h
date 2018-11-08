@@ -46,7 +46,6 @@
  * @def Attribute used for representing i2c mux channel
  */
 #define SDI_DEV_ATTR_SDI_I2CMUX_CHANNEL          "channel"
-
 /**
  * @def Attribute used for mux address for PCA mux
  */

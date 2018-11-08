@@ -37,7 +37,7 @@ static t_std_error sdi_led_state(sdi_resource_hdl_t led_hdl, int state)
     if (rc != STD_ERR_OK) {
         return rc;
     }
-    
+
     /* Set the resource handle of the physical LED to the ID */
     phy_hdl = (sdi_resource_hdl_t)(uintptr_t)phy_led;
 
@@ -89,7 +89,7 @@ t_std_error sdi_led_on(sdi_resource_hdl_t led_hdl)
 t_std_error sdi_led_off(sdi_resource_hdl_t led_hdl)
 {
     return sdi_led_state(led_hdl, 0);
-} 
+}
 
 /*
  * Set the specified value in the digital_display_led.

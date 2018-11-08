@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SDI_CFG_DIR=/etc/opx/sdi
+SDI_CFG_DIR=$(realpath $(dirname $0)/../../../../etc/opx/sdi)
 SQL_CREATE=sdi-db-create.sql
 DN_SDI_DB_NAME=vm-test.db
 DN_SDI_DB_INIT=sdi-db-test-init.sql

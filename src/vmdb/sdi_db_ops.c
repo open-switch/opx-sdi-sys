@@ -15,8 +15,10 @@
  */
 
 /**
- * @file sdi_db_ops.c
- * @brief SDI DB access implementation
+ * sdi_db_ops.c
+ * SDI DB access implementation
+ *
+ * Copyright (c) 2015, Dell Products LP. All Rights Reserved.
  */
 
 #include <stdio.h>
@@ -1329,7 +1331,7 @@ t_std_error sdi_db_bin_field_get(db_sql_handle_t db_handle,
      */
     snprintf(sql_stmt, sizeof(sql_stmt),
              "SELECT %s FROM %s WHERE %s", field, table, condition);
-    
+
     sdi_db_sem_take();
 
     rc = db_sql_raw_sql_execute(db_handle, sql_stmt, &length, result);
@@ -1359,7 +1361,6 @@ t_std_error sdi_db_bin_field_get(db_sql_handle_t db_handle,
  * @param[in]   table           Table name
  * @param[in]   field           Field name
  * @param[in]   value           Pointer to the value
- * @param[in]   len             Length (bytes) of the value
  *
  * @return STD_ERR_OK on success, error code on failure.
  */
@@ -1948,5 +1949,5 @@ t_std_error sdi_db_get_entity_type(db_sql_handle_t db_handle,
 
     /* Cast the retrieved value to an entity handle */
     *entity_type = (sdi_entity_type_t) e_type;
-    return STD_ERR_OK;       
+    return STD_ERR_OK;
 }
