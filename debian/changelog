@@ -1,7 +1,7 @@
 opx-sdi-sys (4.24.0) unstable; urgency=medium
 
   * Bugfix: Removed assertion of delay entry in sdi cfg file
-  * Bugfix: Different optics type detected
+  * Bugfix: Different optics type detected when QSA28 adapter plugged in port 21
   * Bugfix: Fix endianess issue
   * Update: Set default RX value to conform with dBm measurement
 
