@@ -1,3 +1,11 @@
+opx-sdi-sys (4.24.0+opx1) unstable; urgency=medium
+
+  * Bugfix: Revert changes made in src/drivers/sys-interface-drivers/sdi_i2cdev.c
+            so we don't coredump if we can't get sysfs device attribute
+  * Bugfix: Added missing prototype in sdi_bmc.c
+
+ -- Dell EMC <ops-dev@lists.openswitch.net>  Thu, 08 Nov  2018 15:00:00 -0800
+
 opx-sdi-sys (4.24.0) unstable; urgency=medium
 
   * Bugfix: Removed assertion of delay entry in sdi cfg file
