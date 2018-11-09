@@ -15,7 +15,7 @@
  */
 
 /*
- * filename: sdi_bmc.c 
+ * filename: sdi_bmc.c
  */
 
 #include "sdi_bmc.h"
@@ -42,6 +42,7 @@
 #include <signal.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static ipmi_domain_id_t domain_id;
 
@@ -52,7 +53,7 @@ sdi_bmc_sensor_t *sdi_bmc_add_entity_fru_info (ipmi_entity_t *entity);
 
 
 /**
- * sdi_bmc_sensor_threshold_event_handler is a callback function which is used to 
+ * sdi_bmc_sensor_threshold_event_handler is a callback function which is used to
  * register for threshold events with openipmi library. It will update current sensor
  * data in local sensor database.
  */
@@ -124,7 +125,7 @@ sdi_bmc_sensor_discrete_event_handler (ipmi_sensor_t *sensor, enum ipmi_event_di
 }
 
 /**
- * sdi_bmc_sensor_discrete_states is a callback function to read and update 
+ * sdi_bmc_sensor_discrete_states is a callback function to read and update
  * discrete states of sensor.
  */
 
@@ -297,7 +298,7 @@ static int sdi_bmc_ipmi_traverse_fru_node_tree (ipmi_fru_node_t *node,
 	if (data)
 	    ipmi_fru_data_free(data);
     }
-    
+
     ipmi_fru_put_node(node);
 
     return 0;
@@ -413,7 +414,7 @@ static void sdi_bmc_sensor_reading_handler (ipmi_sensor_t *sensor,
 }
 
 /**
- * Threshold reading callback function. Its will update threshold data of a sensor in 
+ * Threshold reading callback function. Its will update threshold data of a sensor in
  * sensor database.
  */
 static void sdi_bmc_got_thresholds (ipmi_sensor_t *sensor, int err, ipmi_thresholds_t *th, void *cb_data)
@@ -489,7 +490,7 @@ static sdi_bmc_sensor_t *sdi_bmc_sensor_create (ipmi_entity_t *entity, ipmi_sens
                 if (rv != 0) {
                     SDI_DEVICE_ERRMSG_LOG("Error in adding discrete event handler : 0x%x\n", rv);
                 }
-                rv = ipmi_sensor_add_discrete_event_handler(sensor, 
+                rv = ipmi_sensor_add_discrete_event_handler(sensor,
                         sdi_bmc_sensor_discrete_event_handler, NULL);
                 if (rv != 0) {
                     SDI_DEVICE_ERRMSG_LOG("Error in adding discrete event handler : 0x%x\n", rv);
@@ -673,7 +674,7 @@ static void sdi_bmc_iterate_entities (ipmi_domain_t *domain, void *cb_data)
 
 /**
  * sdi_bmc_open_domain_handler is a domain handler callback function,
- * this will get called once the domain is created. Initialize entity update 
+ * this will get called once the domain is created. Initialize entity update
  * handler.
  */
 
