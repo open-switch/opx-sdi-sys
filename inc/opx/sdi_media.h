@@ -296,6 +296,27 @@ extern "C" {
 
 
 /**
+ * @enum sdi_port_type_t
+ * Port types
+ */
+typedef enum {
+    SDI_MEDIA_PORT_TYPE_BACKPLANE,
+    SDI_MEDIA_PORT_TYPE_RJ45,
+    SDI_MEDIA_PORT_TYPE_SFP,
+    SDI_MEDIA_PORT_TYPE_SFP_PLUS,
+    SDI_MEDIA_PORT_TYPE_SFP28,
+    SDI_MEDIA_PORT_TYPE_SFP56,
+    SDI_MEDIA_PORT_TYPE_QSFP,
+    SDI_MEDIA_PORT_TYPE_QSFP_PLUS,
+    SDI_MEDIA_PORT_TYPE_QSFP28,
+    SDI_MEDIA_PORT_TYPE_QSFP28_DD_1,  /* upper half of double density port. Master */
+    SDI_MEDIA_PORT_TYPE_QSFP28_DD_2,  /* Lower half. Slave */
+    SDI_MEDIA_PORT_TYPE_QSFP56,
+    SDI_MEDIA_PORT_TYPE_QSFP56_DD,
+
+} sdi_port_type_t;
+
+/**
  * @enum sdi_qsa_adapter_type_t
  * QSA adapter type
  */
@@ -712,6 +733,16 @@ typedef enum {
     /* 0x25 to 0x7F are reserved */
     /* 0x80 to 0xFF are vendor specific*/
 } sdi_media_connector_t;
+
+
+/*
+ * @enum sdi_media_form_factor_id_t
+ * IDs used to represent different media form factors 
+ */
+
+typedef enum {
+    SDI_MEDIA_DOUBLE_DENSITY_MODULE_ID       = 0x18
+} sdi_media_form_factor_id_t;
 
 /**
  * @enum sdi_qsfp_eth_1040g_code_bitmask_t
@@ -1147,6 +1178,9 @@ typedef struct {
     uint_t max_port_speed_mbps;
     uint_t port_density;
     int    max_port_power_mw;
+    sdi_port_type_t port_type;
+    uint_t sub_port_rank;
+    uint_t sub_port_channel_offset;
 } sdi_media_port_info_t;
 
 typedef struct {

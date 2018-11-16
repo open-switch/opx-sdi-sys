@@ -86,6 +86,8 @@ noinst_HEADERS = \
         opx/private/sdi_fpga_pci_bus.h \
         opx/private/sdi_fpga_pci_bus_api.h \
         opx/private/sdi_fpga_pci_bus_attr.h \
+        opx/private/sdi_fixed_ports.h \
+        opx/private/sdi_qsfp28_dd.h \
         opx/unittest/sdi_unit_test.h
 
 # Headers for API (will be included in -dev package)

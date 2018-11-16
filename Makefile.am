@@ -80,6 +80,8 @@ libopx_sdi_device_drivers_la_SOURCES = \
         src/drivers/sdi_pseudo_bus.c \
         src/drivers/sdi_qsfp_4X1_1000baseT.c \
         src/drivers/sdi_qsfp.c \
+        src/drivers/sdi_qsfp28_dd.c \
+        src/drivers/sdi_qsfp28_dd_eeprom.c \
         src/drivers/sdi_qsfp_eeprom.c \
         src/drivers/sdi_s6k_psu.c \
         src/drivers/sdi_segment_display.c \
@@ -91,6 +93,7 @@ libopx_sdi_device_drivers_la_SOURCES = \
         src/drivers/sdi_sfp_eeprom.c \
         src/drivers/sdi_sf_tmp.c \
         src/drivers/sdi_tmp75.c \
+        src/drivers/sdi_fixed_port.c \
         src/drivers/sys-interface-drivers/sdi_gpio.c \
         src/drivers/sys-interface-drivers/sdi_i2cdev.c\
         src/drivers/sys-interface-drivers/sdi_sysfs_gpio_helpers.c \
