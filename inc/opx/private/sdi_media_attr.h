@@ -132,6 +132,12 @@
 /* @def Attribute used for representing 10G mode value for port led  */
 #define SDI_MEDIA_PORT_LED_10G_MODE_VALUE       "port_led_10g_mode_value"
 
+/* @def Attribute used for representing the port's default speed */
+#define SDI_MEDIA_PORT_DEFAULT_SPEED_MBPS       "port_default_speed_mbps"
+
+/* @def Attribute used for stating the offset by which the subport is offset from the parent port */
+#define SDI_MEDIA_SUB_PORT_CHANNEL_OFFSET        "sub_port_channel_offset"
+
 /**
  * @def Attribute used for representing max power the port can provide in mW
  */
@@ -151,8 +157,10 @@
 #define SDI_PORT_TYPE_SFP28                     "SFP28"
 #define SDI_PORT_TYPE_QSFP                      "QSFP"
 #define SDI_PORT_TYPE_QSFP28                    "QSFP28"
-#define SDI_PORT_TYPE_QSFP28_DD                 "QSFP28-DD"
-
+#define SDI_PORT_TYPE_QSFP28_DD_1               "QSFP28-DD-1"
+#define SDI_PORT_TYPE_QSFP28_DD_2               "QSFP28-DD-2"
+#define SDI_PORT_TYPE_BACKPLANE                 "BACKPLANE"
+#define SDI_PORT_TYPE_RJ45                      "RJ45"
 /**
  * @}
  */

@@ -53,7 +53,7 @@ static t_std_error sdi_qsfp_register (std_config_node_t node, void *bus_handle,
  * pres[out]      - presence status
  * return t_std_error
  */
-static t_std_error sdi_qsfp_presence_get (sdi_resource_hdl_t resource_hdl, bool *pres)
+t_std_error sdi_qsfp_presence_get (sdi_resource_hdl_t resource_hdl, bool *pres)
 {
     sdi_device_hdl_t qsfp_device = NULL;
     qsfp_device_t *qsfp_priv_data = NULL;
@@ -101,7 +101,7 @@ static t_std_error sdi_qsfp_presence_get (sdi_resource_hdl_t resource_hdl, bool 
  * enable[in]       - "true" to enable and "false" to disable
  * return           - standard t_std_error
  */
-static t_std_error sdi_qsfp_module_control(sdi_resource_hdl_t resource_hdl,
+t_std_error sdi_qsfp_module_control(sdi_resource_hdl_t resource_hdl,
                                            sdi_media_module_ctrl_type_t ctrl_type, bool enable)
 {
     sdi_device_hdl_t qsfp_device = NULL;
@@ -213,7 +213,7 @@ static t_std_error sdi_qsfp_module_control(sdi_resource_hdl_t resource_hdl,
  * status[out]      - "true" if enabled else "false"
  * return           - standard t_std_error
  */
-static t_std_error sdi_qsfp_module_control_status_get(sdi_resource_hdl_t resource_hdl,
+t_std_error sdi_qsfp_module_control_status_get(sdi_resource_hdl_t resource_hdl,
                                                       sdi_media_module_ctrl_type_t ctrl_type,
                                                       bool *status)
 {
@@ -450,17 +450,26 @@ static t_std_error sdi_qsfp_register (std_config_node_t node, void *bus_handle,
     }
 
     node_attr = std_config_attr_get(node, SDI_MEDIA_PORT_TYPE);
+    qsfp_data->capability = SDI_MEDIA_SPEED_40G;
+    qsfp_data->port_info.port_type = SDI_MEDIA_PORT_TYPE_QSFP_PLUS;
+    qsfp_data->port_info.port_density = 1;
     if (node_attr != NULL) {
          if (strcmp(node_attr, SDI_PORT_TYPE_QSFP28) == 0) {
              qsfp_data->capability = SDI_MEDIA_SPEED_100G;
-         } else if (strcmp(node_attr, SDI_PORT_TYPE_QSFP28_DD) == 0) {
-             qsfp_data->capability = SDI_MEDIA_SPEED_200G;
-         } else {
-             qsfp_data->capability = SDI_MEDIA_SPEED_40G;
+             qsfp_data->port_info.port_type = SDI_MEDIA_PORT_TYPE_QSFP28;
+         } else if (strcmp(node_attr, SDI_PORT_TYPE_QSFP28_DD_1) == 0) {
+             qsfp_data->capability = SDI_MEDIA_SPEED_200G; /* need to change to 100G */
+             qsfp_data->port_info.port_type = SDI_MEDIA_PORT_TYPE_QSFP28_DD_1;
+             qsfp_data->port_info.port_density = 2;
+             qsfp_data->port_info.sub_port_rank = 0;
+         } else if (strcmp(node_attr, SDI_PORT_TYPE_QSFP28_DD_2) == 0) {
+             qsfp_data->capability = SDI_MEDIA_SPEED_200G;  /* need to change to 100G */
+             qsfp_data->port_info.port_type = SDI_MEDIA_PORT_TYPE_QSFP28_DD_2;
+             qsfp_data->port_info.port_density = 2;
+             qsfp_data->port_info.sub_port_rank = 1;
          }
-    } else {
-        qsfp_data->capability = SDI_MEDIA_SPEED_40G;
-    }
+
+    } 
 
     node_attr = std_config_attr_get(node, SDI_MEDIA_MODULE_PRESENCE_BUS);
     STD_ASSERT(node_attr != NULL);

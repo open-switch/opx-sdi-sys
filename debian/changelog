@@ -1,3 +1,11 @@
+opx-sdi-sys (4.24.0+opx2) unstable; urgency=medium
+
+  * Feature: Driver for Quad Small Form-factor Pluggable (QSFP)
+  * Feature: EEPROM for QSFP and related APIs
+  * Feature: Driver and APIs for Fixed Ports
+
+ -- Dell EMC <ops-dev@lists.openswitch.net>  Fri, 16 Nov  2018 15:00:00 -0800
+
 opx-sdi-sys (4.24.0+opx1) unstable; urgency=medium
 
   * Bugfix: Revert changes made in src/drivers/sys-interface-drivers/sdi_i2cdev.c
