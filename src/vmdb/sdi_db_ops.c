@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Dell Inc.
+ * Copyright (c) 2018 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -18,7 +18,6 @@
  * sdi_db_ops.c
  * SDI DB access implementation
  *
- * Copyright (c) 2015, Dell Products LP. All Rights Reserved.
  */
 
 #include <stdio.h>
