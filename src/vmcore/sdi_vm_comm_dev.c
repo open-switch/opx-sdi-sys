@@ -3,7 +3,7 @@
  *
  * Comm Dev simulation functionality
  *
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -18,8 +18,11 @@
  * permissions and limitations under the License.
  */
 
+#include "db_sql_ops.h"
 #include "sdi_comm_dev.h"
+#include "sdi_sys_vm.h"
 #include "std_error_codes.h"
+#include "std_assert.h"
 
 #include <stdint.h>
 
@@ -38,6 +41,15 @@ t_std_error sdi_comm_dev_msg_write(sdi_resource_hdl_t resource_hdl, uint16_t siz
 /* SDI COMM DEV - Read static data from Comm_Dev */
 t_std_error sdi_comm_dev_platform_info_get(sdi_resource_hdl_t resource_hdl, sdi_platform_info_t *platform_info)
 {
+    STD_ASSERT(platform_info != NULL);
+
+    db_sql_handle_t db_hdl = sdi_get_db_handle();
+    sdi_db_str_field_get(db_hdl, resource_hdl, TABLE_COMMDEV, COMMDEV_SERVICE_TAG,
+                                                    platform_info->service_tag);
+    sdi_db_str_field_get(db_hdl, resource_hdl, TABLE_COMMDEV, COMMDEV_FW_VER,
+                                                    platform_info->comm_dev_fw_ver);
+    sdi_db_int_field_get(db_hdl, resource_hdl, TABLE_COMMDEV, COMMDEV_SLOT_ID,
+                                             (int *)&platform_info->slot_occupation);
     return STD_ERR_OK;
 }
 

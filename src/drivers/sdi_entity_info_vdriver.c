@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -43,16 +43,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-static t_std_error sdi_entity_info_register(std_config_node_t node, 
+static t_std_error sdi_entity_info_register(std_config_node_t node,
                                             void *bus_handle,
                                             sdi_device_hdl_t* device_hdl);
 
 static t_std_error sdi_entity_info_init(sdi_device_hdl_t device_hdl);
 
 static entity_info_t entity_info_callbacks = {
-    NULL, 
+    NULL,
     sdi_entity_info_data_get,
 };
+static void sdi_part_number_mapping_info_get(std_config_node_t);
 
 /* Export the Driver table */
 const sdi_driver_t entity_info_entry = {
@@ -60,6 +61,8 @@ const sdi_driver_t entity_info_entry = {
     sdi_entity_info_init
 };
 
+static sdi_partnum_psu_af_map_t *mapping_info_db;
+static uint_t max_part_num_type = 0;
 /**
  * FAN or PSU entity_info data get
  *
@@ -74,11 +77,13 @@ t_std_error sdi_entity_info_data_get(void *resource_hdl,
     sdi_device_hdl_t vchip = NULL;
     t_std_error rc = STD_ERR_OK;
     entity_info_data_t *entity_info_data = NULL;
-    sdi_pin_group_bus_hdl_t airflow_dir_hdl = 0; 
+    sdi_pin_group_bus_hdl_t airflow_dir_hdl = 0;
     uint_t airflow_dir_value = 0;
     sdi_pin_bus_hdl_t psu_type_hdl = 0;
     uint_t powertype_value = 0;
     bool result = true;
+    uint_t iter = 0;
+    char sdi_sys_part_no[SDI_PART_NUM_LEN]={'\0'};
 
     /** Validate arguments */
     vchip = (sdi_device_hdl_t)resource_hdl;
@@ -90,36 +95,47 @@ t_std_error sdi_entity_info_data_get(void *resource_hdl,
     entity_info->max_speed = entity_info_data->max_fan_speed;
     entity_info->num_fans = entity_info_data->no_of_fans;
     entity_info->air_flow = SDI_PWR_AIR_FLOW_NOT_APPLICABLE;
-    
+
+    if (entity_info_data->part_num_based_ent) {
+        sdi_sys_part_number_get(sdi_sys_part_no);
+        for (iter = 0;iter < max_part_num_type;iter++) {
+            if (strcmp(mapping_info_db[iter].partno,sdi_sys_part_no) == 0) {
+                entity_info->power_type.dc_power = mapping_info_db[iter].psu_dc_type_t;
+                entity_info->power_type.ac_power = mapping_info_db[iter].psu_ac_type_t;
+                entity_info->air_flow = mapping_info_db[iter].airflow_dir_t;
+                break;
+            }
+        }
+    }
     /* Retrieve the pin group bus hdl for airflow direction */
     airflow_dir_hdl = entity_info_data->airflow_dir_hdl;
 
-    if (airflow_dir_hdl != 0) { 
-        rc = sdi_pin_group_acquire_bus(airflow_dir_hdl); 
+    if (airflow_dir_hdl != 0) {
+        rc = sdi_pin_group_acquire_bus(airflow_dir_hdl);
         if (rc != STD_ERR_OK){
             return rc;
-        } 
-        
+        }
+
         rc = sdi_pin_group_read_level(airflow_dir_hdl, &airflow_dir_value);
-        
-        sdi_pin_group_release_bus(airflow_dir_hdl); 
+
+        sdi_pin_group_release_bus(airflow_dir_hdl);
 
         if (rc != STD_ERR_OK){
-            SDI_DEVICE_ERRMSG_LOG("airflow dir get failed for %s", 
-                                  vchip->alias);
+            SDI_DEVICE_ERRMSG_LOG("airflow dir get failed for %s",
+                    vchip->alias);
             return rc;
-        } 
-        
-        if (entity_info_data->normal_airflow_val == airflow_dir_value) { 
+        }
+
+        if (entity_info_data->normal_airflow_val == airflow_dir_value) {
             entity_info->air_flow = SDI_PWR_AIR_FLOW_NORMAL;
-        } else if (entity_info_data->reverse_airflow_val == airflow_dir_value) { 
-            entity_info->air_flow = SDI_PWR_AIR_FLOW_REVERSE; 
-        } else { 
+        } else if (entity_info_data->reverse_airflow_val == airflow_dir_value) {
+            entity_info->air_flow = SDI_PWR_AIR_FLOW_REVERSE;
+        } else {
             SDI_DEVICE_ERRMSG_LOG("unknown airflow value %d for %s",
-                                  airflow_dir_value, vchip->alias); 
-            result = false; 
-        } 
-    } 
+                    airflow_dir_value, vchip->alias);
+            result = false;
+        }
+    }
 
     /* Retrieve the pin bus hdl for psu_type */
     psu_type_hdl = entity_info_data->psu_type_hdl;
@@ -130,27 +146,27 @@ t_std_error sdi_entity_info_data_get(void *resource_hdl,
         if (rc != STD_ERR_OK){
             SDI_DEVICE_ERRMSG_LOG("psu type get failed for %s", vchip->alias);
             return rc;
-        } 
-        
+        }
+
         if (entity_info_data->ac_power_val == powertype_value) {
             entity_info->power_type.ac_power = true;
         } else if (entity_info_data->dc_power_val == powertype_value) {
             entity_info->power_type.dc_power = true;
-        } else { 
-            SDI_DEVICE_ERRMSG_LOG("unknown psu_type %d for %s", 
-                                  powertype_value, vchip->alias);
+        } else {
+            SDI_DEVICE_ERRMSG_LOG("unknown psu_type %d for %s",
+                    powertype_value, vchip->alias);
             result = false;
         }
     }
 
-     /*
-      * Mark the not-applicable fields in virtual entity_info as "NA"
-      */
+    /*
+     * Mark the not-applicable fields in virtual entity_info as "NA"
+     */
     safestrncpy(entity_info->prod_name, "NA", sizeof(entity_info->prod_name));
     safestrncpy(entity_info->ppid, "NA", sizeof(entity_info->ppid));
     safestrncpy(entity_info->hw_revision, "NA", sizeof(entity_info->hw_revision));
     safestrncpy(entity_info->platform_name, "NA", sizeof(entity_info->platform_name));
-    safestrncpy(entity_info->vendor_name, "NA", sizeof(entity_info->vendor_name)); 
+    safestrncpy(entity_info->vendor_name, "NA", sizeof(entity_info->vendor_name));
     safestrncpy(entity_info->part_number, "NA", sizeof(entity_info->part_number));
 
     if (false == result) {
@@ -172,7 +188,7 @@ t_std_error sdi_entity_info_data_get(void *resource_hdl,
  *    psu_type="<power type of the PSU (ac or dc)>"
  *  </entity_info>
  */
-static t_std_error sdi_entity_info_register (std_config_node_t node, 
+static t_std_error sdi_entity_info_register (std_config_node_t node,
                                              void *bus_handle,
                                              sdi_device_hdl_t* device_hdl)
 {
@@ -180,6 +196,7 @@ static t_std_error sdi_entity_info_register (std_config_node_t node,
     sdi_device_hdl_t vchip = NULL;
     entity_info_data_t *entity_info_data = NULL;
     t_std_error rc = STD_ERR_OK;
+    bool part_num_based_sys = false;
 
     /** Validate arguments */
     STD_ASSERT(node != NULL);
@@ -200,7 +217,7 @@ static t_std_error sdi_entity_info_register (std_config_node_t node,
 
     attr_value = std_config_attr_get(node, SDI_DEV_ATTR_ALIAS);
     if (attr_value == NULL) {
-        snprintf(vchip->alias, SDI_MAX_NAME_LEN, "virt-entity-info-%d", 
+        snprintf(vchip->alias, SDI_MAX_NAME_LEN, "virt-entity-info-%d",
                  vchip->instance );
     } else {
         safestrncpy(vchip->alias, attr_value, sizeof(vchip->alias));
@@ -221,7 +238,7 @@ static t_std_error sdi_entity_info_register (std_config_node_t node,
 
     attr_value = std_config_attr_get(node, SDI_DEV_ATTR_AIRFLOW_DIR_BUS);
     if (attr_value != NULL) {
-        entity_info_data->airflow_dir_hdl = 
+        entity_info_data->airflow_dir_hdl =
                         sdi_get_pin_group_bus_handle_by_name(attr_value);
     }
 
@@ -237,7 +254,7 @@ static t_std_error sdi_entity_info_register (std_config_node_t node,
 
     attr_value = std_config_attr_get(node, SDI_DEV_ATTR_PSU_TYPE_BUS);
     if (attr_value != NULL) {
-        entity_info_data->psu_type_hdl = 
+        entity_info_data->psu_type_hdl =
                         sdi_get_pin_bus_handle_by_name(attr_value);
     }
 
@@ -251,12 +268,73 @@ static t_std_error sdi_entity_info_register (std_config_node_t node,
         entity_info_data->dc_power_val = strtoul(attr_value, NULL, 0);
     }
 
-    sdi_resource_add(SDI_RESOURCE_ENTITY_INFO, vchip->alias,(void*)vchip, 
+    attr_value = std_config_attr_get(node, SDI_DEV_ATTR_SYS_PART_NUMBER_BASED_ENTY);
+    if(attr_value != NULL) {
+        entity_info_data->part_num_based_ent = strtoul(attr_value, NULL, 0) ? true : false;
+    }
+
+    attr_value = std_config_attr_get(node, SDI_DEV_ATTR_PART_NUMBER_BASED_SYS);
+    if(attr_value != NULL) {
+        part_num_based_sys = strtoul(attr_value, NULL, 0) ? true : false;
+    }
+
+    if (part_num_based_sys) {
+        sdi_part_number_mapping_info_get(node);
+    }
+    sdi_resource_add(SDI_RESOURCE_ENTITY_INFO, vchip->alias,(void*)vchip,
                          &entity_info_callbacks);
 
     *device_hdl = vchip;
 
     return rc;
+}
+
+/**
+* Part number based info mapping get
+**/
+
+static void sdi_part_number_mapping_info_get(std_config_node_t node) {
+    char *attr_value = NULL;
+    std_config_node_t map_info_node;
+    uint_t iter = 0;
+
+    attr_value = std_config_attr_get(node, SDI_DEV_ATTR_MAX_PART_NO_TYPES);
+    if(attr_value != NULL) {
+        max_part_num_type = strtoul(attr_value, NULL, 0);
+    }
+
+    mapping_info_db = (sdi_partnum_psu_af_map_t *) calloc(sizeof(sdi_partnum_psu_af_map_t),max_part_num_type);
+    STD_ASSERT(mapping_info_db != NULL);
+
+    map_info_node = std_config_get_child(node);
+    while (map_info_node != NULL) {
+        if (strcmp(SDI_DEV_PART_NUM_MAP_NODE,std_config_name_get(map_info_node)) != 0) {
+            map_info_node = std_config_next_node(map_info_node);
+            continue;
+        }
+
+        attr_value = std_config_attr_get(map_info_node, SDI_DEV_ATTR_AIRFLOW_VALUE);
+        if(attr_value != NULL) {
+            mapping_info_db[iter].airflow_dir_t = strtoul(attr_value, NULL, 0);
+        }
+
+        attr_value = std_config_attr_get(map_info_node, SDI_DEV_ATTR_PSU_AC_TYPE_VAL);
+        if(attr_value != NULL) {
+            mapping_info_db[iter].psu_ac_type_t = strtoul(attr_value, NULL, 0) ? true:false;
+        }
+
+        attr_value = std_config_attr_get(map_info_node, SDI_DEV_ATTR_PSU_DC_TYPE_VAL);
+        if(attr_value != NULL) {
+            mapping_info_db[iter].psu_dc_type_t = strtoul(attr_value, NULL, 0) ? true:false;
+        }
+
+        attr_value = std_config_attr_get(map_info_node, SDI_DEV_ATTR_PART_NO);
+        if(attr_value != NULL) {
+            safestrncpy(mapping_info_db[iter].partno, attr_value, sizeof(mapping_info_db[iter].partno));
+        }
+        map_info_node = std_config_next_node(map_info_node);
+        iter++;
+    }
 }
 
 /**

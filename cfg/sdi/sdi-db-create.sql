@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -73,6 +73,15 @@ CREATE TABLE Entity_Resource (
 
     PRIMARY KEY ( Resource_Handle ),
     FOREIGN KEY ( Entity_Handle ) REFERENCES Entity_Info(Entity_Handle)
+);
+
+CREATE TABLE CommDev (
+    Resource_Handle     INTEGER,
+    Service_Tag         TEXT,
+    Firmware_Version    TEXT,
+    Slot_Occupation     INTEGER,
+
+    PRIMARY KEY ( Resource_Handle )
 );
 
 CREATE TABLE Fan (

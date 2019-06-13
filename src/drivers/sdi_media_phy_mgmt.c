@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -31,7 +31,8 @@
 #include "std_assert.h"
 #include "std_time_tools.h"
 #include "sdi_platform_util.h"
-
+#include "sdi_sfp_plus_aq.h"
+ 
 /* Magic number description not given in appnote from Marvell
    an-2036 app note from Mavell give below magic value to enable
    SGMII mode for phy device */
@@ -375,4 +376,32 @@ t_std_error sdi_cusfp_phy_serdes_control (sdi_device_hdl_t sfp_device, bool enab
     } while (0);
 
     return rc;
+}
+
+t_std_error sdi_cusfp_plus_phy_serdes_control (sdi_device_hdl_t sfp_device, bool enable)
+{
+    STD_ASSERT(sfp_device != NULL);
+
+    return sdi_media_aq_set_tx_state((sdi_resource_hdl_t)sfp_device, enable);
+}
+
+t_std_error sdi_cusfp_plus_phy_link_status_get (sdi_device_hdl_t sfp_device, bool* status)
+{
+    STD_ASSERT(sfp_device != NULL);
+
+    return sdi_media_aq_get_link_status((sdi_resource_hdl_t)sfp_device, status);
+}
+
+t_std_error sdi_cusfp_plus_phy_speed_set(sdi_device_hdl_t sfp_device, sdi_media_speed_t speed)
+{
+    STD_ASSERT(sfp_device != NULL);
+    return sdi_media_aq_set_rate((sdi_resource_hdl_t)sfp_device, speed);
+}
+
+t_std_error sdi_cusfp_plus_phy_speed_get(sdi_device_hdl_t sfp_device, sdi_media_speed_t* speed)
+{
+    bool link_status = false;
+ 
+    STD_ASSERT(sfp_device != NULL);
+    return sdi_media_aq_get_line_side_status((sdi_resource_hdl_t)sfp_device, &link_status, speed);
 }

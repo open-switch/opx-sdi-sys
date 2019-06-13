@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -733,11 +733,10 @@ static t_std_error set_gpio_group_default_configuration(
 static void create_gpio_group(sdi_gpio_group_t *gpio_group,
                              const char *pin_group_str)
 {
-    char delimiter = ',';
     size_t count = 0;
     const char *token = NULL;
     std_parsed_string_t handle;
-    if (std_parse_string(&handle, pin_group_str, &delimiter)) {
+    if (std_parse_string(&handle, pin_group_str, ",")) {
         count = std_parse_string_num_tokens(handle);
         STD_ASSERT(count >= MIN_NUMBER_OF_PINS_IN_GROUP);
         STD_ASSERT(gpio_group != NULL);

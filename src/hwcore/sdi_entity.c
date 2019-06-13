@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -89,7 +89,15 @@ t_std_error sdi_entity_presence_get(sdi_entity_hdl_t entity_hdl, bool *presence)
             rc = sdi_bmc_dc_sensor_reading_get_by_name(entity_priv_hdl->pres_attr, &reading);
             if (rc == STD_ERR_OK) {
                 if (entity_priv_hdl->type == SDI_ENTITY_FAN_TRAY) {
-                    *presence = ((reading == SDI_BMC_ENTITY_PRESENT) ? true : false);
+                    if (entity_priv_hdl->pres_bit == SDI_BMC_INVALID_BIT) {
+                        *presence = ((reading == SDI_BMC_ENTITY_PRESENT) ? true : false);
+                    } else {
+                        if (STD_BIT_TEST(reading, entity_priv_hdl->pres_bit)) {
+                            *presence = true;
+                        } else {
+                            *presence = false;
+                        }
+                    }
                 } else if (entity_priv_hdl->type == SDI_ENTITY_PSU_TRAY) {
                     if (STD_BIT_TEST(reading, SDI_BMC_PSU_STATUS_PRSNT)) {
                         *presence = true;

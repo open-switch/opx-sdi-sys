@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -38,31 +38,57 @@
 t_std_error sdi_entity_info_data_get(void *resource_hdl,
                                      sdi_entity_info_t *entity_info);
 
+
 /**
+**
  * @struct entity_info_t
  * ENTITY INFO (virtual device) private data
  */
 typedef struct {
     /** Store the current entity info data */
-    /**< No.of fan in the entity */   
-    uint_t                    no_of_fans;            
+    /**< No.of fan in the entity */
+    uint_t                    no_of_fans;
     /**< Max Speed of the fan in the entity */
-    uint_t                    max_fan_speed;         
+    uint_t                    max_fan_speed;
     /**< SDI pin group bus hdl for obtaining fan airflow dir */
-    sdi_pin_group_bus_hdl_t   airflow_dir_hdl;       
-    /**< SDI pin bus hdl for obtaining psu power type: ac or dc */      
-    sdi_pin_bus_hdl_t         psu_type_hdl;          
+    sdi_pin_group_bus_hdl_t   airflow_dir_hdl;
+    /**< SDI pin bus hdl for obtaining psu power type: ac or dc */
+    sdi_pin_bus_hdl_t         psu_type_hdl;
     /**< H/w specified value for normal airflow dir on this platform */
-    uint_t                    normal_airflow_val;    
+    uint_t                    normal_airflow_val;
     /**< H/w specified value for reverse airflow dir on this platform */
-    uint_t                    reverse_airflow_val;   
+    uint_t                    reverse_airflow_val;
     /**< H/w specified value for ac power type on this platform */
-    uint_t                    ac_power_val;          
+    uint_t                    ac_power_val;
     /**< H/w specified value for dc power type on this platform */
-    uint_t                    dc_power_val;          
+    uint_t                    dc_power_val;
+    /** Part number based PSU type and AF dir entity */
+    bool                      part_num_based_ent;
     /**< Device Alias */
     char                      alias[SDI_MAX_NAME_LEN];
 }entity_info_data_t ;
+
+/**
+**
+ * @sdi_partnum_psu_af_map_t
+ * Part num based PSU_TYPE and AF mapping info(virtual device built-in FRUs)
+ */
+typedef struct {
+    /**< Fan airflow dir corresponding to sys part number*/
+    uint_t   airflow_dir_t;
+    /**< psu power type: ac corresponding to sys part number*/
+    bool   psu_ac_type_t;
+    /**< psu power type: dc corresponding to sys part number*/
+    bool   psu_dc_type_t;
+    /**< Device part number len*/
+    char     partno[SDI_PART_NUM_LEN-1];
+}sdi_partnum_psu_af_map_t;
+
+/**
+ * System part number get from EEPROM to use it in Vdriver
+ *for Virtual entities AF and PSU type depends on sys part number
+ */
+void sdi_sys_part_number_get(char *part_num);
 
 /**
  * @}

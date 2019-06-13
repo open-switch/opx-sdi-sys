@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -413,7 +413,7 @@ static t_std_error sdi_write_sensor_07_telemetry(sdi_resource_hdl_t resource_hdl
 
 static t_std_error sdi_mailbox_enable(sdi_resource_hdl_t resource_hdl, bool messaging_enable) {
     t_std_error rc = STD_ERR_OK;
-    uint8_t  mailbox_reg_value[SDI_COMM_DEV_MAILBOX_ENABLE_REG] = {0};
+    uint8_t  mailbox_reg_value[SDI_COMM_DEV_MAILBOX_ENABLE_REG_SIZE] = {0};
     uint16_t reg_data =0;
 
     if (messaging_enable) {

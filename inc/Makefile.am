@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018 Dell Inc.
+# Copyright (c) 2019 Dell Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -93,17 +93,17 @@ noinst_HEADERS = \
         opx/private/sdi_register_eeprom_api.h \
         opx/private/sdi_register_fantray_api.h \
         opx/private/util.h \
-        opx/private/sdi_bmc.h \
-        opx/private/sdi_bmc_bus_api.h \
-        opx/private/sdi_bmc_db.h \
-        opx/private/sdi_bmc_internal.h \
-        opx/private/sdi_bmc_io_bus.h \
-        opx/private/sdi_fpga_pci.h \
-        opx/private/sdi_fpga_pci_bus.h \
-        opx/private/sdi_fpga_pci_bus_api.h \
-        opx/private/sdi_fpga_pci_bus_attr.h \
-        opx/private/sdi_fixed_ports.h \
-        opx/private/sdi_qsfp28_dd.h \
+	opx/private/sdi_bmc.h \
+	opx/private/sdi_bmc_bus_api.h \
+	opx/private/sdi_bmc_db.h \
+	opx/private/sdi_bmc_internal.h \
+	opx/private/sdi_bmc_io_bus.h \
+	opx/private/sdi_fpga_pci.h \
+	opx/private/sdi_fpga_pci_bus.h \
+	opx/private/sdi_fpga_pci_bus_api.h \
+	opx/private/sdi_fpga_pci_bus_attr.h \
+        opx/private/sdi_media_ext_mod_ctrl.h \
+        opx/private/sdi_sfp_plus_aq.h \
         opx/unittest/sdi_unit_test.h
 
 # Headers for API (will be included in -dev package)
@@ -111,7 +111,7 @@ nobase_include_HEADERS = \
         opx/sdi_comm_dev.h \
         opx/sdi_entity.h \
         opx/sdi_entity_info.h \
-        opx/sdi_ext_ctrl.h \
+	opx/sdi_ext_ctrl.h \
         opx/sdi_fan.h \
         opx/sdi_host_system.h \
         opx/sdi_led.h \

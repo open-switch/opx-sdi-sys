@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -39,6 +39,12 @@
 #include <ctype.h>
 #include <zlib.h>
 
+static char system_part_number[SDI_PART_NUM_LEN]={'\0'};
+
+void sdi_sys_part_number_get(char *part_num)
+{
+    safestrncpy(part_num, system_part_number, SDI_PART_NUM_LEN);
+}
 
 static void copy_bytes_to_string(char *dst, size_t dst_size, const char *src, size_t src_size)
 {
@@ -226,7 +232,7 @@ static void sdi_onie_fill_vendor_extn(sdi_onie_tlv_field *tlv_fld,
                 entity_data->air_flow            = SDI_PWR_AIR_FLOW_REVERSE;
                 break;
             default:
-                err_mesg = "Invalid value for PSU type in ONIE EEPROM vendor extension";
+                err_mesg = "Invlaid value for PSU type in ONIE EEPROM vendor extension";
             }
             break;
 
@@ -371,6 +377,7 @@ static void sdi_onie_fill_tlv_entity_info(char *eeprom_buf, sdi_entity_parser_t 
 
         case SDI_ONIE_PART_NO_TAG:
             COPY_BYTES_TO_STRING(entity_data->part_number, (const char *) tlv_fld->value, (size_t) tlv_fld->length);
+            safestrncpy(system_part_number, entity_data->part_number, SDI_PART_NUM_LEN);
             break;
 
         default:

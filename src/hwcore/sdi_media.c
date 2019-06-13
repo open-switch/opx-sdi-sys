@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -672,7 +672,7 @@ t_std_error sdi_media_phy_link_status_get (sdi_resource_hdl_t resource_hdl, uint
             channel, type, status);
     if (rc != STD_ERR_OK){
         if( STD_ERR_EXT_PRIV(rc) != EOPNOTSUPP ) {
-            SDI_ERRMSG_LOG("Failed to Set mode for media phy details for %s error code : %d(0x%x)",
+            SDI_ERRMSG_LOG("Failed to get status for media phy for %s error code : %d(0x%x)",
                     media_hdl->name, rc, rc);
         }
     }

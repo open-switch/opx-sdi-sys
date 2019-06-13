@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -54,7 +54,7 @@ TEST(sdi_vm_entity_info_unittest, entityLookup)
 /* FAIL: incase of entity presence */
 TEST(sdi_vm_entity_info_unittest, entityPresenceGet)
 {
-    bool presence;
+    bool presence=false;
     sdi_entity_hdl_t e_hdl;
     ASSERT_EQ (STD_ERR_OK, sdi_sys_init ());
     //setup to make the entity absent

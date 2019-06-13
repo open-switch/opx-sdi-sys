@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -31,6 +31,7 @@
 #include "sdi_entity_info_internal.h"
 #include "std_assert.h"
 #include "std_llist.h"
+#include "std_utils.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -94,7 +95,7 @@ void sdi_resource_add(sdi_resource_type_t type, const char *name, void *callback
     newnode->resource_hdl = (struct sdi_resource *)calloc(1, sizeof(struct sdi_resource));
     STD_ASSERT(newnode->resource_hdl != NULL);
 
-    strncpy(newnode->resource_hdl->name, name, SDI_MAX_NAME_LEN);
+    safestrncpy(newnode->resource_hdl->name, name, SDI_MAX_NAME_LEN);
     newnode->resource_hdl->type = type;
     newnode->resource_hdl->callback_hdl = callback_hdl;
     newnode->resource_hdl->callback_fns = callback_fns;

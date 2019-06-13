@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -330,6 +330,7 @@ sdi_entity_hdl_t sdi_entity_create(sdi_entity_type_t type, uint_t instance, cons
     entity_hdl->delay = 0;
     entity_hdl->power_output_status_pin_hdl = NULL;
     entity_hdl->pres_pin_hdl = NULL;
+    entity_hdl->pres_bit = SDI_BMC_INVALID_BIT;
     entity_hdl->fault_status_pin_hdl = NULL;
     entity_hdl->power_pin_hdl = NULL;
     for (reset_type = 0; reset_type < MAX_NUM_RESET; reset_type++) {
@@ -587,7 +588,7 @@ void sdi_register_entity(std_config_node_t node)
     if (alias_name == NULL) {
         snprintf(alias, SDI_MAX_NAME_LEN, "%s-%u",entity_name, instance);
     } else {
-        strncpy(alias, alias_name, SDI_MAX_NAME_LEN);
+        safestrncpy(alias, alias_name, SDI_MAX_NAME_LEN);
     }
 
     config_attr = std_config_attr_get(node, "type");
@@ -622,6 +623,11 @@ void sdi_register_entity(std_config_node_t node)
         /* if presence attribute is a FIXED_SLOT, consider it as FIXED Entity */
         STD_BIT_CLEAR(entity_priv_hdl->oper_support_flag, SDI_HOTSWAPPABLE);
         entity_priv_hdl->pres_pin_hdl = NULL;
+    }
+
+    config_attr = std_config_attr_get(node, "presence_bit");
+    if (config_attr != NULL) {
+        entity_priv_hdl->pres_bit = (uint_t) strtoul(config_attr, NULL, 0x10);
     }
 
     fault_name = std_config_attr_get(node, "fault");

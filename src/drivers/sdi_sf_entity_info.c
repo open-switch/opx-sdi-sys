@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -137,7 +137,8 @@ static void construct_date_code(char* date_str /*Of the form YYMMDD*/)
 
     uint_t tmp = strlen(date_str);
     char tmp_str[tmp + 1];
-    safestrncpy(tmp_str, date_str, tmp + 1);
+    memcpy(tmp_str, date_str, sizeof(tmp_str));
+    tmp_str[tmp] = '\0';
     date_str[3] = '\0';
 
     /* Get day and convert */
@@ -202,7 +203,7 @@ t_std_error sdi_sf_entity_info_data_get(void *resource_hdl,
                          eeprom_data->country_code_end_addr, ptr, country_code_len);
         ptr += country_code_len;
 
-        safestrncpy(ptr, entity_info->part_number, strlen(entity_info->part_number)+1);
+        memcpy(ptr, entity_info->part_number, strlen(entity_info->part_number));
         ptr += strlen(entity_info->part_number);
 
         entity_info_populate(chip, eeprom_data->mfg_id_start_addr,
@@ -353,9 +354,11 @@ static t_std_error sdi_sf_entity_info_register(std_config_node_t node,
             break;
         case 1:
             SDI_DEVICE_ERRMSG_LOG("PPID end address unset in device smf config file");
+            free(chip);
             return STD_ERR(BOARD, FAIL, ppid_address_count);
         case 2:
             SDI_DEVICE_ERRMSG_LOG("PPID start address unset in device smf config file");
+            free(chip);
             return STD_ERR(BOARD, FAIL, ppid_address_count);
         case 3:
         default:

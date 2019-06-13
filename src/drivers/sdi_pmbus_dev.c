@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -562,7 +562,7 @@ static void sdi_pmbus_resource_add(sdi_pmbus_dev_t  *pmbus_dev )
 {
     uint_t sensor_index = 0;
     void *callback_fns = NULL;
-    char alias[SDI_MAX_NAME_LEN] = {0};
+    char alias[SDI_MAX_NAME_LEN*2] = {0};
     int resource_type = -1;
 
     for(sensor_index = 0;sensor_index < pmbus_dev->max_sensors;sensor_index++)
@@ -584,7 +584,7 @@ static void sdi_pmbus_resource_add(sdi_pmbus_dev_t  *pmbus_dev )
             continue;
         }
 
-         snprintf(alias,SDI_MAX_NAME_LEN,"psu-%d-%s",
+         snprintf(alias,sizeof(alias),"psu-%d-%s",
                   pmbus_dev->dev->instance,
                   pmbus_dev->sdi_pmbus_sensors[sensor_index].alias);
 

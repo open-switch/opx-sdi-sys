@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -1311,7 +1311,7 @@ t_std_error sdi_db_bin_field_get(db_sql_handle_t db_handle,
                                  uint8_t *value,
                                  uint_t *len)
 {
-    char sql_stmt[SDI_DB_SQL_DEFAULT_BUFFER_LENGTH];
+    char sql_stmt[SDI_DB_SQL_DEFAULT_BUFFER_LENGTH*2];
     char condition[SDI_DB_SQL_DEFAULT_BUFFER_LENGTH];
     char result[SDI_DB_SQL_DEFAULT_BUFFER_LENGTH];
     size_t length = sizeof(result);
@@ -1851,7 +1851,7 @@ t_std_error sdi_db_media_monitor_threshold_set(db_sql_handle_t db_handle,
                                      channel, type);
     snprintf(value_str, sizeof(value_str), "%u", value);
     return sdi_db_sql_set_attribute(db_handle, TABLE_MEDIA_THRESHOLD,
-                                MEDIA_THRESHOLD_VALUE, condition, value_str);
+                                MEDIA_THRESHOLD_VALUE, value_str, condition);
 }
 
 /**
@@ -1910,7 +1910,7 @@ t_std_error sdi_db_media_threshold_set(db_sql_handle_t db_handle,
                                      MEDIA_DEFAULT_CHANNEL, type);
     snprintf(value_str, sizeof(value_str), "%f", value);
     return sdi_db_sql_set_attribute(db_handle, TABLE_MEDIA_THRESHOLD,
-                                MEDIA_THRESHOLD_VALUE, condition, value_str);
+                                MEDIA_THRESHOLD_VALUE, value_str, condition);
 }
 
 /**
