@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -321,7 +321,7 @@ static inline t_std_error sdi_is_rate_select_supported(sdi_device_hdl_t sfp_devi
     rc = sdi_smbus_read_byte(sfp_device->bus_hdl, sfp_device->addr.i2c_addr,
                              SFP_ENHANCED_OPTIONS_OFFSET, &buf, SDI_I2C_FLAG_NONE);
     if (rc != STD_ERR_OK) {
-        SDI_DEVICE_ERRMSG_LOG("Getting of diag monitoring value is failed for %s rc : %d",
+        SDI_DEVICE_ERRMSG_LOG("Getting of rate select support value is failed for %s rc : %d",
                               sfp_device->alias, rc);
         return rc;
     }
@@ -333,6 +333,47 @@ static inline t_std_error sdi_is_rate_select_supported(sdi_device_hdl_t sfp_devi
     }
 
     return rc;
+}
+
+/* This function checks whether extended module control is supported or not on this divice
+ * Make sure that module is already selected before calling this function */
+static inline t_std_error sdi_is_ext_mod_ctrl_supported(sdi_device_hdl_t sfp_device,
+                                                       bool *support_status)
+{
+    t_std_error rc = STD_ERR_OK;
+    uint8_t buf = 0;
+
+    STD_ASSERT(sfp_device != NULL);
+    STD_ASSERT(support_status != NULL);
+
+    *support_status =  false;
+
+    rc = sdi_smbus_read_byte(sfp_device->bus_hdl, sfp_device->addr.i2c_addr,
+                             SFP_EXT_MOD_CTRL_SUPPORT_OFFSET, &buf, SDI_I2C_FLAG_NONE);
+    if (rc != STD_ERR_OK) {
+        SDI_DEVICE_ERRMSG_LOG("Getting of extended mod ctrl value is failed for %s rc : %d",
+                              sfp_device->alias, rc);
+        return rc;
+    }
+
+    if( STD_BIT_TEST(buf, SFP_EXT_MOD_CTRL_BIT) == 0 ) {
+        *support_status = false;
+    } else {
+        *support_status = true;
+    }
+
+    return rc;
+}
+
+/* Quick herlper wrapper to get ext mod control support */
+static bool sdi_is_sfp_plus_aq_ext_mod_ctrl_sup (sdi_device_hdl_t sfp_device)
+{
+    t_std_error rc = STD_ERR_OK;
+    bool status = false;
+    STD_ASSERT(sfp_device != NULL);
+
+    rc = sdi_is_ext_mod_ctrl_supported(sfp_device,  &status);
+    return status && (rc == STD_ERR_OK);
 }
 
 /* This function converts temperature raw data to human readable format based on
@@ -961,6 +1002,13 @@ t_std_error sdi_sfp_tx_control (sdi_resource_hdl_t resource_hdl, uint_t channel,
         }
 
         do {
+            if (sdi_is_sfp_plus_aq_ext_mod_ctrl_sup(sfp_device)){
+                rc = sdi_cusfp_plus_phy_serdes_control(sfp_device, enable);
+                if (rc != STD_ERR_OK){
+                    SDI_DEVICE_ERRMSG_LOG("Error setting tx control on module %s", sfp_device->alias);
+                }
+            }
+
             rc = sdi_smbus_read_byte(sfp_device->bus_hdl,
                     sfp_device->addr.i2c_addr, SFP_ENHANCED_OPTIONS_OFFSET,
                     &buf_sup, SDI_I2C_FLAG_NONE);
@@ -1979,8 +2027,12 @@ t_std_error sdi_sfp_feature_support_status_get (sdi_resource_hdl_t resource_hdl,
             break;
         }
 
+        rc = sdi_is_ext_mod_ctrl_supported(sfp_device,
+                                          &feature_support->sfp_features.ext_mod_ctrl_support_status);
+        if (rc != STD_ERR_OK){
+            break;
+        }
     }while(0);
-
     sdi_sfp_module_deselect(sfp_priv_data);
 
     return rc;
@@ -2231,7 +2283,9 @@ t_std_error sdi_sfp_phy_speed_set(sdi_resource_hdl_t resource_hdl, uint_t channe
         return rc;
     }
 
-    rc = sdi_cusfp_phy_speed_set(sfp_device, speed);
+    rc = sdi_is_sfp_plus_aq_ext_mod_ctrl_sup(sfp_device)
+            ? sdi_cusfp_plus_phy_speed_set(sfp_device, speed)
+            : sdi_cusfp_phy_speed_set(sfp_device, speed);
 
     sdi_sfp_module_deselect(sfp_priv_data);
 
@@ -2264,7 +2318,9 @@ t_std_error sdi_sfp_phy_link_status_get (sdi_resource_hdl_t resource_hdl, uint_t
         return rc;
     }
 
-    rc = sdi_cusfp_phy_link_status_get(sfp_device, status);
+    rc = sdi_is_sfp_plus_aq_ext_mod_ctrl_sup(sfp_device)
+            ? sdi_cusfp_plus_phy_link_status_get(sfp_device, status)
+            : sdi_cusfp_phy_link_status_get(sfp_device, status);
 
     sdi_sfp_module_deselect(sfp_priv_data);
 
@@ -2331,7 +2387,9 @@ t_std_error sdi_sfp_phy_serdes_control (sdi_resource_hdl_t resource_hdl, uint_t 
         return rc;
     }
 
-    rc = sdi_cusfp_phy_serdes_control(sfp_device, enable);
+    rc = sdi_is_sfp_plus_aq_ext_mod_ctrl_sup(sfp_device)
+            ? sdi_cusfp_plus_phy_serdes_control(sfp_device, enable)
+            : sdi_cusfp_phy_serdes_control(sfp_device, enable);
 
     sdi_sfp_module_deselect(sfp_priv_data);
 

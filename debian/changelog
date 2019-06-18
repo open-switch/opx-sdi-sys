@@ -1,8 +1,27 @@
+opx-sdi-sys (4.25.0) unstable; urgency=medium
+
+  * Bugfix: Adjust the elm_data offset due to the openIPMI data header removal
+  * Bugfix: Made changes in sdi_bmc_fan_status_get function to return success and 
+            fault status as good when SDI BMC driver doesnt find fan status sensor in BMC sensor list
+  * Update: Separate PSU DC type, AC+DC type, so we can debug the BMC spurious data
+  * Bugfix: Made changes in sdi_bmc_fan_status_get function to return success and 
+            falut status as good when SDI BMC driver doesnt find fan status sensor in BMC sensor list
+  * Bugfix: Reset eeprom version on module init
+  * Bugfix: Address High Sev Coverity issues
+  * Bugfix: Fixed issue in getting the fan status from discrete state sensor
+  * Bugfix: Support rate select on 10gbaseT
+  * Update: Bringing Platform specific changes into device.xml
+  * Update: Changed BITMASK to BIT
+  * Bugfix: S5212F built-in FAN and PSU details are not displayed
+  * Update: Copyright year
+
+ -- Dell EMC <ops-dev@lists.openswitch.net>  Wed, 06 Jun 2019 15:00:00 -0800
+
 opx-sdi-sys (4.24.0+opx3) unstable; urgency=medium
 
   * Update: Copyright information
 
- -- Dell EMC <ops-dev@lists.openswitch.net>  Tue, 11 Dec  2018 15:00:00 -0800
+ -- Dell EMC <ops-dev@lists.openswitch.net>  Tue, 11 Dec 2018 15:00:00 -0800
 
 opx-sdi-sys (4.24.0+opx2) unstable; urgency=medium
 

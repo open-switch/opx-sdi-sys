@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018 Dell Inc.
+# Copyright (c) 2019 Dell Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -96,8 +96,6 @@ libopx_sdi_device_drivers_la_SOURCES = \
         src/drivers/sdi_pseudo_bus.c \
         src/drivers/sdi_qsfp_4X1_1000baseT.c \
         src/drivers/sdi_qsfp.c \
-        src/drivers/sdi_qsfp28_dd.c \
-        src/drivers/sdi_qsfp28_dd_eeprom.c \
         src/drivers/sdi_qsfp_eeprom.c \
         src/drivers/sdi_s6k_psu.c \
         src/drivers/sdi_segment_display.c \
@@ -109,7 +107,6 @@ libopx_sdi_device_drivers_la_SOURCES = \
         src/drivers/sdi_sfp_eeprom.c \
         src/drivers/sdi_sf_tmp.c \
         src/drivers/sdi_tmp75.c \
-        src/drivers/sdi_fixed_port.c \
         src/drivers/sys-interface-drivers/sdi_gpio.c \
         src/drivers/sys-interface-drivers/sdi_i2cdev.c\
         src/drivers/sys-interface-drivers/sdi_sysfs_gpio_helpers.c \
@@ -122,7 +119,10 @@ libopx_sdi_device_drivers_la_SOURCES = \
         src/drivers/sdi_fpga_pci_bus.c \
         src/drivers/sdi_comm_dev_ext_ctrl.c \
         src/drivers/sdi_platform_util.c \
-        src/drivers/sdi_sf_ext_ctrl.c
+	src/drivers/sdi_sfp_plus_aq.c \
+	src/drivers/sdi_media_ext_mod_ctrl.c \
+        src/drivers/sdi_sf_ext_ctrl.c \
+        src/drivers/sdi_bmc_oem_ext_ctl.c
 
 
 libopx_sdi_device_drivers_la_LIBADD = libopx_sdi_framework.la -lopx_common -lopx_logging -lz -lm -lpthread -lOpenIPMI -lOpenIPMIposix -lOpenIPMIpthread

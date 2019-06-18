@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -98,12 +98,17 @@ t_std_error sdi_bmc_entity_info_data_get(void *resource_hdl,
         entity_info->air_flow = SDI_PWR_AIR_FLOW_REVERSE;
     }
 
-    if (sensor->res.entity_info.type == 0x0) {
+    if (sensor->res.entity_info.type == BMC_AC_TYPE) {
         entity_info->power_type.ac_power = 1;
         entity_info->power_type.dc_power = 0;
-    } else {
+    } else if (sensor->res.entity_info.type == BMC_DC_TYPE) {
         entity_info->power_type.ac_power = 0;
         entity_info->power_type.dc_power = 1;
+    } else if (sensor->res.entity_info.type == BMC_AC_DC_TYPE) {
+        entity_info->power_type.ac_power = 1;
+        entity_info->power_type.dc_power = 1;
+    } else {
+        return SDI_DEVICE_ERRCODE(EINVAL); /* BMC has returned unexpected data */
     }
 
     entity_info->num_fans = sensor->res.entity_info.num_fans;
@@ -167,6 +172,7 @@ t_std_error sdi_bmc_entity_info_res_register (sdi_device_hdl_t bmc_dev_hdl, sdi_
     }
     bmc_res->data_sdr->res.entity_info.num_fans = bmc_res->fan_count;
     bmc_res->data_sdr->res.entity_info.max_speed = bmc_res->max_fan_speed;
+    bmc_res->data_sdr->res.entity_info.is_dummy = bmc_res->is_dummy;
     sdi_resource_add(bmc_res->resource_type, bmc_res->alias, dev_hdl, &bmc_entity_info_callback);
     return STD_ERR_OK;
 }

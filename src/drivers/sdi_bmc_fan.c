@@ -33,6 +33,7 @@
 #include "std_utils.h"
 #include "sdi_device_common.h"
 #include "sdi_bus.h"
+#include "std_bit_ops.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -98,14 +99,33 @@ static t_std_error sdi_bmc_fan_status_get(void *resource_hdl, bool *status)
     chip = (sdi_device_hdl_t)resource_hdl;
     tmp_res = (sdi_bmc_dev_resource_info_t *) (chip->private_data);
     STD_ASSERT(tmp_res != NULL);
+    if (!strcmp(tmp_res->status_sdr_id, "")) { // Hack for MtEcho
+        *status = false;
+        return STD_ERR_OK;
+    }
     if (tmp_res->status_sdr == NULL) {
         tmp_res->status_sdr = sdi_bmc_db_sensor_get_by_name(tmp_res->status_sdr_id);
         if (tmp_res->status_sdr == NULL) {
-            return SDI_DEVICE_ERRCODE(EINVAL);
+            /**
+             * If fan status sensor is not implemented in BMC return 
+             * status as good.
+             */
+            SDI_DEVICE_TRACEMSG_LOG("Fan status sensor not found(%s)", tmp_res->status_sdr_id);
+            *status = false;
+            return rc;
         }
     }
     sensor = tmp_res->status_sdr;
-    *status = ( (sensor->res.reading.data == 0) ? false : true );
+    if (tmp_res->status_bit == SDI_BMC_INVALID_BIT) {
+        *status = ( (sensor->res.reading.discrete_state == 0) ? false : true );
+    } else {
+        uint32_t reading = sensor->res.reading.discrete_state;
+        if (STD_BIT_TEST(reading, tmp_res->status_bit)) {
+            *status = true;
+        } else {
+            *status = false;
+        }
+    }
     return rc;
 }
 

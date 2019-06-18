@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -119,7 +119,10 @@ static void sdi_i2cmux_pca_chan_release_bus(sdi_i2c_bus_hdl_t bus_handle)
     /* Deselect the mux (all channels) */
     SDI_DEVICE_TRACEMSG_LOG("%s:%d sending deselect on bus %s addr %02x\n",
             __FUNCTION__, __LINE__, mux->i2c_bus_name, bus->mux_i2c_addr);
-    sdi_smbus_write_byte(mux->i2c_bus, bus->mux_i2c_addr, 0, 0, 0);
+    if(STD_ERR_OK != sdi_smbus_write_byte(mux->i2c_bus, bus->mux_i2c_addr, 0, 0, 0)){
+        SDI_DEVICE_TRACEMSG_LOG("Error in in smbus write for pca channel bus release on %s",
+            mux->i2c_bus_name);
+    }
     std_mutex_unlock (&(mux->mux_lock));
 }
 

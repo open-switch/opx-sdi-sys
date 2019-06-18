@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -362,6 +362,44 @@ static inline void sdi_qsfp_module_deselect(qsfp_device_t *qsfp_priv_data)
     }
 }
 
+/** This function either puts the module in reset or brings it out based on the reset flag **/
+static t_std_error sdi_qsfp_module_reset(sdi_device_hdl_t qsfp_device, bool reset)
+{
+    t_std_error rc = STD_ERR_OK;
+    qsfp_device_t *qsfp_priv_data =  NULL;
+
+
+    STD_ASSERT(qsfp_device != NULL);
+    qsfp_priv_data = (qsfp_device_t *) qsfp_device->private_data;
+    STD_ASSERT(qsfp_priv_data != NULL);
+
+    rc = sdi_pin_group_acquire_bus(qsfp_priv_data->mod_reset_hdl);
+    if (rc != STD_ERR_OK){
+        SDI_DEVICE_ERRMSG_LOG("Could not acquire bus when attempting module reset oper on %s", qsfp_device->alias);
+        return rc;
+    }
+
+    do {
+        uint_t value = 0;
+        rc = sdi_pin_group_read_level(qsfp_priv_data->mod_reset_hdl, &value);
+        if (rc != STD_ERR_OK){
+            SDI_DEVICE_ERRMSG_LOG("module reset status get failed for %s", qsfp_device->alias);
+            break;
+        }
+        reset ? STD_BIT_SET(value, qsfp_priv_data->mod_reset_bitmask)
+                : STD_BIT_CLEAR(value, qsfp_priv_data->mod_reset_bitmask);
+        rc = sdi_pin_group_write_level(qsfp_priv_data->mod_reset_hdl, value);
+        if (rc != STD_ERR_OK){
+            SDI_DEVICE_ERRMSG_LOG("module reset set to %d failed for %s", reset, qsfp_device->alias);
+            break;
+        }
+        /* Wait for action to take effect. In some cases sleep is needed */
+        std_usleep(1000 * qsfp_priv_data->mod_reset_delay_ms);
+    } while(0);
+    sdi_pin_group_release_bus(qsfp_priv_data->mod_reset_hdl);
+
+    return rc;
+}
 /* This function validates the channel number */
 static inline bool sdi_qsfp_validate_channel (uint_t channel, qsfp_category_t category)
 {
@@ -2217,6 +2255,8 @@ t_std_error sdi_qsfp_channel_monitor_get (sdi_resource_hdl_t resource_hdl, uint_
             *value = convert_qsfp_tx_bias(buf);
         }
     }
+    SDI_DEVICE_ERRMSG_LOG("qsfp smbus read failed at addr : %d"
+                    "reg : %d val %f monitor %d", qsfp_device->addr, reg_offset, *value, (int)monitor);
 
     return rc;
 }
@@ -2717,6 +2757,8 @@ t_std_error sdi_qsfp_module_init (sdi_resource_hdl_t resource_hdl, bool pres)
     qsfp_priv_data = (qsfp_device_t *)qsfp_device->private_data;
     STD_ASSERT(qsfp_priv_data != NULL);
 
+  	qsfp_priv_data->eeprom_version = 0;
+  
     if (pres == false) {
         if (qsfp_priv_data->mod_type == QSFP_QSA_ADAPTER) {
 
@@ -3092,36 +3134,17 @@ t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
         *qsa_adapter = SDI_QSA_ADAPTER_NONE;
         return rc;
     }
-
-    rc = sdi_pin_group_acquire_bus(qsfp_priv_data->mod_reset_hdl);
-    if (rc != STD_ERR_OK){
-        SDI_DEVICE_ERRMSG_LOG("Could not acquire bus when attempting module reset for QSA detection");
-        *qsa_adapter = SDI_QSA_ADAPTER_UNKNOWN;
-        return rc;
-    }
+    *qsa_adapter = SDI_QSA_ADAPTER_UNKNOWN;
 
     /* Put module in reset mode */
-    do {
-        uint_t value = 0;
-        rc = sdi_pin_group_read_level(qsfp_priv_data->mod_reset_hdl, &value);
-        if (rc != STD_ERR_OK){
-            SDI_DEVICE_ERRMSG_LOG("module reset status get failed for %s", qsfp_device->alias);
-            break;
-        }
-        STD_BIT_SET(value, qsfp_priv_data->mod_reset_bitmask);
-        rc = sdi_pin_group_write_level(qsfp_priv_data->mod_reset_hdl, value);
-        if (rc != STD_ERR_OK){
-            SDI_DEVICE_ERRMSG_LOG("module reset set failed for %s", qsfp_device->alias);
-            break;
-        }
-        std_usleep(1000 * qsfp_priv_data->mod_reset_delay_ms);
-    } while(0);
-    sdi_pin_group_release_bus(qsfp_priv_data->mod_reset_hdl);
+    rc =  sdi_qsfp_module_reset(qsfp_device, true);
+    if (rc != STD_ERR_OK){
+        SDI_DEVICE_ERRMSG_LOG("Module reset failed for %s during QSA type detection", qsfp_device->alias);
+    }
 
     if ((rc = sdi_qsfp_module_select(qsfp_device)) != STD_ERR_OK) {
         SDI_DEVICE_ERRMSG_LOG("QSFP module selection failed when attempting QSA info get for %s",
              qsfp_device->alias);
-        *qsa_adapter = SDI_QSA_ADAPTER_UNKNOWN;
         return rc;
     }
 
@@ -3133,7 +3156,6 @@ t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
         if(rc != STD_ERR_OK) {
             SDI_DEVICE_ERRMSG_LOG("Unable to read adapter info when attempting QSA info get for %s",
                  qsfp_device->alias);
-            *qsa_adapter = SDI_QSA_ADAPTER_UNKNOWN;
         }
         else if ((buf[0] == SDI_QSFP_QSA28_OUI_VAL0) && (buf[1] == SDI_QSFP_QSA28_OUI_VAL1)
            && (buf[2] == SDI_QSFP_QSA28_OUI_VAL2)){
@@ -3146,27 +3168,10 @@ t_std_error sdi_qsfp_qsa_adapter_type_get (sdi_resource_hdl_t resource_hdl,
     sdi_qsfp_module_deselect(qsfp_priv_data);
 
     /* Bring module out of reset mode */
-    rc = sdi_pin_group_acquire_bus(qsfp_priv_data->mod_reset_hdl);
+    rc =  sdi_qsfp_module_reset(qsfp_device, false);
     if (rc != STD_ERR_OK){
-        SDI_DEVICE_ERRMSG_LOG("Could not acquire bus when attempting module reset for QSA detection");
-        return rc;
+        SDI_DEVICE_ERRMSG_LOG("Module reset clear failed for %s after QSA type detection", qsfp_device->alias);
     }
-
-    do {
-        uint_t value = 0;
-        rc = sdi_pin_group_read_level(qsfp_priv_data->mod_reset_hdl, &value);
-        if (rc != STD_ERR_OK){
-            SDI_DEVICE_ERRMSG_LOG("module reset status get failed after QSA read for %s", qsfp_device->alias);
-            break;
-        }
-        STD_BIT_CLEAR(value, qsfp_priv_data->mod_reset_bitmask);
-        rc = sdi_pin_group_write_level(qsfp_priv_data->mod_reset_hdl, value);
-        if (rc != STD_ERR_OK){
-            SDI_DEVICE_ERRMSG_LOG("module reset clear failed after QSA read for %s. Device may not work as expected", qsfp_device->alias);
-            break;
-        }
-    } while(0);
-    sdi_pin_group_release_bus(qsfp_priv_data->mod_reset_hdl);
     return rc;
 }
 

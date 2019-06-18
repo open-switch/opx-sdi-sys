@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -155,7 +155,7 @@ static t_std_error sdi_get_i2c_device_path_by_sysfs_name(const char *bus_name,
     char *sptr = NULL;
     char *str = NULL;
     char i2cdev[PATH_MAX] = {0};
-    char name[PATH_MAX] = {0};
+    char name[PATH_MAX*2] = {0};
     t_std_error rc = SDI_DEVICE_ERR_PARAM;
 
     snprintf(i2cdev, PATH_MAX, "%s/class/i2c-dev", SYSFS_PATH);
@@ -177,7 +177,7 @@ static t_std_error sdi_get_i2c_device_path_by_sysfs_name(const char *bus_name,
             continue;
         }
 
-        snprintf(name, PATH_MAX, "%s/%s/device/name", i2cdev, ent->d_name);
+        snprintf(name, sizeof(name), "%s/%s/device/name", i2cdev, ent->d_name);
         if ((fp = fopen(name, "r")) == NULL) {
             rc = SDI_DEVICE_ERRNO;
             SDI_DEVICE_ERRNO_LOG();
@@ -891,10 +891,10 @@ static t_std_error sdi_i2cdev_driver_register(std_config_node_t node,
 
     str = std_config_attr_get(node, SDI_DEV_ATTR_BUS_NAME);
     if (str == NULL) {
-            snprintf(i2c_bus->bus.bus_name, SDI_MAX_NAME_LEN, "%s-%d",
+        snprintf(i2c_bus->bus.bus_name, SDI_MAX_NAME_LEN, "%s-%d",
                 std_config_name_get(node), i2c_bus->bus.bus_id);
     } else {
-            safestrncpy(i2c_bus->bus.bus_name, str, SDI_MAX_NAME_LEN);
+        safestrncpy(i2c_bus->bus.bus_name, str, SDI_MAX_NAME_LEN);
     }
 
     i2c_bus->ops = &sdi_i2cdev_bus_ops;
@@ -904,34 +904,34 @@ static t_std_error sdi_i2cdev_driver_register(std_config_node_t node,
         error = SDI_DEVICE_ERRNO;
         free(sys_i2c_bus);
         SDI_DEVICE_ERRMSG_LOG("%s:%d i2c bus %u lock init failed %d\n",
-            __FUNCTION__, __LINE__, i2c_bus->bus.bus_id, error);
+                __FUNCTION__, __LINE__, i2c_bus->bus.bus_id, error);
         return error;
     }
 
     str = std_config_attr_get(node, SDI_DEV_ATTR_SYSFS_NAME);
     if (str != NULL) {
         safestrncpy(sys_i2c_bus->kernel_sysfs_name,
-                    str,
-                    sizeof(sys_i2c_bus->kernel_sysfs_name)
-                    );
+                str,
+                sizeof(sys_i2c_bus->kernel_sysfs_name)
+                );
     }
 
     str = std_config_attr_get(node, SDI_DEV_ATTR_DEV_NAME);
     if (str != NULL) {
         /*fill the dev name directly if it is passed*/
         safestrncpy(sys_i2c_bus->kernel_i2cdev_name,
-                    str,
-                    sizeof(sys_i2c_bus->kernel_i2cdev_name)
-                    );
+                str,
+                sizeof(sys_i2c_bus->kernel_i2cdev_name)
+                );
     }
 
     if (sys_i2c_bus->kernel_sysfs_name[0] == 0
-        && sys_i2c_bus->kernel_i2cdev_name[0] == 0
-        ) {
+            && sys_i2c_bus->kernel_i2cdev_name[0] == 0
+       ) {
         error = SDI_DEVICE_ERRNO;
         free(sys_i2c_bus);
         SDI_DEVICE_ERRMSG_LOG("%s:%d i2c bus %u \n No sysfs or dev name given",
-            __FUNCTION__, __LINE__, i2c_bus->bus.bus_id);
+                __FUNCTION__, __LINE__, i2c_bus->bus.bus_id);
         return error;
     }
 

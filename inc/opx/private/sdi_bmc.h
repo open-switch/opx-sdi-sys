@@ -24,6 +24,7 @@
 
 #include "std_error_codes.h"
 #include "sdi_driver_internal.h"
+#include "sdi_bmc_internal.h"
 
 /**
  * sdi_bmc_device_driver_init is to initialize BMC driver, it establishes
@@ -32,5 +33,10 @@
  */
 t_std_error sdi_bmc_device_driver_init (sdi_device_hdl_t dev_hdl);
 
+/**
+ * sdi_bmc_oem_cmd_execute is to execute OEM specific IPMI command.
+ * 
+ */
+t_std_error sdi_bmc_oem_cmd_execute(sdi_bmc_oem_cmd_info_t *oem_cmd, uint8_t *data);
 
 #endif /* __SDI_BMC_H__ */

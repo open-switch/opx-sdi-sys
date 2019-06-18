@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -86,6 +86,46 @@
  * @def Attribute value for representing DC powertype
  */
 #define SDI_DEV_ATTR_DC_POWER_VAL             "dc_power_val"
+
+/**
+ * @def Attribute value to know PSU_TYPE and FAN_AF based on sys part number
+ */
+#define SDI_DEV_ATTR_PART_NUMBER_BASED_SYS     "part_no_based_sys"
+
+/**
+ * @def Attribute value to know PSU_TYPE and FAN_AF based on sys part number
+ */
+#define SDI_DEV_ATTR_SYS_PART_NUMBER_BASED_ENTY  "part_no_based_enty"
+
+/**
+ * @def Attribute value for representing MAX part number types
+ */
+#define SDI_DEV_ATTR_MAX_PART_NO_TYPES         "max_part_no_types"
+
+/**
+ * @def Attribute value representing airflow value of specific part_no type
+ */
+#define SDI_DEV_ATTR_AIRFLOW_VALUE             "airflow_val"
+
+/**
+ * @def Attribute value representing PSU AC type val of specific part_no type
+ */
+#define SDI_DEV_ATTR_PSU_AC_TYPE_VAL           "ac_type"
+
+/**
+ * @def Attribute value representing PSU DC type val of specific part_no type
+ */
+#define SDI_DEV_ATTR_PSU_DC_TYPE_VAL           "dc_type"
+
+/**
+ * @def Attribute value for representing part number
+ */
+#define SDI_DEV_ATTR_PART_NO                   "part_no"
+
+/**
+ * @def Attribute value for representing part number mapping node
+ */
+#define SDI_DEV_PART_NUM_MAP_NODE              "part_no_mapping"
 
 /**
  * @}

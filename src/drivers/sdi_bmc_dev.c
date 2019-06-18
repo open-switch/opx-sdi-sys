@@ -36,6 +36,7 @@
 static t_std_error sdi_bmc_dev_register(std_config_node_t node, void *bus_handle,
                                         sdi_device_hdl_t *device_hdl);
 static t_std_error sdi_bmc_dev_init(sdi_device_hdl_t dev_hdl);
+std_dll_head oem_poller_head;
 
 /*
  * Every driver must export function with name sdi_<driver_name>_query_callbacks
@@ -102,6 +103,53 @@ sdi_bmc_dev_resource_info_t * sdi_bmc_dev_get_by_data_sdr (sdi_device_hdl_t dev_
 }
 
 /**
+ *  Populate OEM specific IPMI command from config node
+ */
+
+void  sdi_bmc_populate_oem_cmd_info (std_config_node_t node, sdi_bmc_oem_cmd_info_t *oem_info)
+{
+    const char  *attr = NULL;
+
+    STD_ASSERT(node !=  NULL);
+
+    attr = std_config_attr_get(node, SDI_BMC_DEV_ATTR_OEM_NETFN);
+    STD_ASSERT(attr != NULL);
+    oem_info->netfn = strtoul(attr, NULL, 16);
+    attr = std_config_attr_get(node, SDI_BMC_DEV_ATTR_OEM_CMD);
+    STD_ASSERT(attr != NULL);
+    oem_info->cmd = strtoul(attr, NULL, 16);
+    attr = std_config_attr_get(node, SDI_BMC_DEV_ATTR_OEM_BUSID);
+    if (attr != NULL)
+        oem_info->bus_id = strtoul(attr, NULL, 16);
+    attr = std_config_attr_get(node, SDI_BMC_DEV_ATTR_OEM_SLAVE_ADDR);
+    if (attr != NULL)
+        oem_info->slave_addr = strtoul(attr, NULL, 16);
+    attr = std_config_attr_get(node, SDI_BMC_DEV_ATTR_OEM_DATA_SIZE);
+    if (attr != NULL)
+        oem_info->data_size = strtoul(attr, NULL, 16);
+    attr = std_config_attr_get(node, SDI_BMC_DEV_ATTR_OEM_OFFSET);
+    if (attr != NULL)
+        oem_info->offset = strtoul(attr, NULL, 16);
+    attr = std_config_attr_get(node, SDI_BMC_DEV_ATTR_OEM_DATA);
+    if (attr != NULL)
+        oem_info->data = strtoul(attr, NULL, 16);
+}
+
+sdi_bmc_oem_poller_t *sdi_bmc_get_poller_for_sensor(const char *sensor)
+{
+    
+    sdi_bmc_oem_poller_t *node = NULL;
+    STD_ASSERT(sensor != NULL);
+    for(node = (sdi_bmc_oem_poller_t *)std_dll_getfirst(&oem_poller_head); node != NULL;
+        node = (sdi_bmc_oem_poller_t *)std_dll_getnext(&oem_poller_head, (std_dll *)node)) {
+        if (!strcmp(sensor, node->sensor)) {
+            return node;
+        }
+    }
+    return NULL;
+}
+
+/**
  * sdi_bmc_populate_dev_list will walk through device config and populates
  * device list under BMC device.
  */
@@ -127,9 +175,11 @@ sdi_bmc_dev_list_t * sdi_bmc_populate_dev_list(std_config_node_t node)
     if (dev_list == NULL) {
         return NULL;
     }
+    std_dll_init(&oem_poller_head);
     dev_list->count = count;
     const char  *attr = NULL;
     const char  *node_attr = NULL;
+    char *child_node = NULL;
 
     for (count = 0, cur_node = std_config_get_child(node); cur_node != NULL;
             cur_node = std_config_next_node(cur_node)) {
@@ -153,10 +203,48 @@ sdi_bmc_dev_list_t * sdi_bmc_populate_dev_list(std_config_node_t node)
             dev_list->data[count].resource_type = SDI_RESOURCE_FAN;
 
             attr = std_config_attr_get(cur_node, SDI_BMC_DEV_ATTR_STATUS);
-            STD_ASSERT(attr != NULL);
-            snprintf(dev_list->data[count].status_sdr_id,
+            if (attr != NULL) {
+                snprintf(dev_list->data[count].status_sdr_id,
                     sizeof(dev_list->data[count].status_sdr_id) - 1, "%s", attr);
-            
+                dev_list->data[count].status_bit = SDI_BMC_INVALID_BIT;
+                attr = std_config_attr_get(cur_node, SDI_BMC_DEV_ATTR_STATUS_BIT);
+                if (attr != NULL) {
+                    dev_list->data[count].status_bit = (uint_t) strtoul(attr, NULL, 0);
+                }
+            } else {
+                child_node = std_config_get_child(cur_node);
+                if (child_node != NULL) {
+                    attr = std_config_name_get(child_node);
+                    STD_ASSERT(attr != NULL);
+                    STD_ASSERT(strcmp(attr, SDI_BMC_DEV_ATTR_OEM_STATUS_SDR) == 0);
+                    attr = std_config_attr_get(child_node, SDI_BMC_DEV_ATTR_SENSR_REQ);
+                    sdi_bmc_oem_poller_t * poller_inst = sdi_bmc_get_poller_for_sensor(attr);
+                    if (poller_inst == NULL) {
+                        poller_inst = (sdi_bmc_oem_poller_t *)
+                                                calloc(sizeof(sdi_bmc_oem_poller_t),1);
+                        STD_ASSERT(poller_inst != NULL);
+                        poller_inst->oem_cmd_count = 1;
+                        safestrncpy(poller_inst->sensor, attr, sizeof(poller_inst->sensor));
+                        attr = std_config_attr_get(child_node, SDI_BMC_DEV_ATTR_SENSR_REQ_BIT);
+                        if (attr != NULL) {
+                            poller_inst->sensor_bit = (uint32_t) strtoul(attr, NULL, 0);
+                        }
+                        std_dll_insertatback(&oem_poller_head, (std_dll *)poller_inst);
+                    } else {
+                        poller_inst->oem_cmd_count++;
+                    }
+                    poller_inst->oem_cmd = (sdi_bmc_oem_cmd_info_t *)realloc(poller_inst->oem_cmd, 
+                            sizeof(sdi_bmc_oem_cmd_info_t) * poller_inst->oem_cmd_count); 
+                    sdi_bmc_populate_oem_cmd_info (child_node, 
+                                &poller_inst->oem_cmd[poller_inst->oem_cmd_count-1]);
+                    sdi_bmc_sensor_t *sensor = (sdi_bmc_sensor_t *)calloc(1, sizeof(sdi_bmc_sensor_t));
+                    STD_ASSERT(sensor != NULL);
+                    sensor->reading_type = SDI_SDR_READING_DISCRETE;
+                    sensor->res.reading.discrete_state = 0xFF;
+                    poller_inst->sensor_loc = &sensor->res.reading.discrete_state;
+                    dev_list->data[count].status_sdr = sensor;
+                }
+            }
         } else if (strcmp(node_attr, SDI_BMC_DEV_ATTR_TEMP) == 0) {
             dev_list->data[count].resource_type = SDI_RESOURCE_TEMPERATURE;
 
@@ -190,6 +278,36 @@ sdi_bmc_dev_list_t * sdi_bmc_populate_dev_list(std_config_node_t node)
                 dev_list->data[count].psu_type_offset = (uint_t) strtoul(attr, NULL, 0x10);
             } else {
                 dev_list->data[count].psu_type_offset = SDI_BMC_INVALID_OFFSET;
+            }
+
+            attr = std_config_attr_get(cur_node, SDI_BMC_HDR_SZ_OFFSET);
+            if (attr != NULL) {
+                dev_list->data[count].hdr_sz_offset = (uint_t) strtoul(attr, NULL, 0x10);
+            } else {
+                dev_list->data[count].hdr_sz_offset = SDI_BMC_HDR_SZ_OFFSET_DEF;
+            }
+
+            dev_list->data[count].is_dummy = false;
+            attr = std_config_attr_get(cur_node, SDI_BMC_ENTITY_INFO_DUMMY);
+            if (attr != NULL) {
+                if ((uint_t) strtoul(attr, NULL, 0x10) == 1) {
+                    dev_list->data[count].is_dummy = true;
+                }
+            }
+
+            for (child_node = std_config_get_child(cur_node); child_node != NULL;
+                    child_node = std_config_next_node(child_node)) {
+                if((attr = std_config_name_get(child_node)) == NULL) continue;
+                STD_ASSERT(strcmp(attr, SDI_BMC_OEM_PSU_TYPE) == 0 ||
+                    strcmp(attr, SDI_BMC_OEM_AIRFLOW) == 0);
+                sdi_bmc_oem_cmd_info_t *oem_cmd = (sdi_bmc_oem_cmd_info_t *)
+                                                calloc(sizeof(sdi_bmc_oem_cmd_info_t),1);
+                sdi_bmc_populate_oem_cmd_info (child_node, oem_cmd);
+                if (strcmp(attr, SDI_BMC_OEM_PSU_TYPE) == 0) {
+                    dev_list->data[count].psu_type_oem_cmd =  oem_cmd;
+                } else {
+                    dev_list->data[count].air_flow_oem_cmd = oem_cmd;
+                }
             }
         } else {
             continue;
@@ -232,7 +350,8 @@ void sdi_bmc_dev_res_register (sdi_device_hdl_t dev_hdl)
  * return           - t_std_error
  */
 static t_std_error sdi_bmc_dev_register(std_config_node_t node, void *bus_handle,
-                                        sdi_device_hdl_t *device_hdl) {
+                                        sdi_device_hdl_t *device_hdl)
+{
     sdi_device_hdl_t    dev_hdl = NULL;
     sdi_bmc_dev_t       *bmc_dev = NULL;
     const char          *attr = NULL;
@@ -265,6 +384,7 @@ static t_std_error sdi_bmc_dev_register(std_config_node_t node, void *bus_handle
 
     sdi_resource_add(SDI_RESOURCE_BMC_DEV, "bmc_dev", (void *)dev_hdl, NULL);
     bmc_dev->dev_list = sdi_bmc_populate_dev_list(node);
+    bmc_dev->oem_poller_head = &oem_poller_head;
     dev_hdl->private_data = bmc_dev;
     *device_hdl = dev_hdl;
     sdi_bmc_device_driver_init(dev_hdl);

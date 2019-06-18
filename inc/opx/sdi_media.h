@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -437,6 +437,10 @@ typedef enum {
  */
 typedef enum {
     /**
+     * SDI MEDIA Invalid Speed
+     */
+    SDI_MEDIA_INVALID_SPEED = -1,
+    /**
      * SDI MEDIA Speed is 10Mbps
      */
     SDI_MEDIA_SPEED_10M,
@@ -448,6 +452,11 @@ typedef enum {
      * SDI MEDIA Speed is 1G
      */
     SDI_MEDIA_SPEED_1G,
+
+    /**
+     * 2.5Gbps and 5Gbps are defined at bottom as SDI_MEDIA_SPEED_2500M and SDI_MEDIA_SPEED_5G
+     */
+
     /**
      * SDI MEDIA Speed is 10G
      */
@@ -496,6 +505,14 @@ typedef enum {
      * SDI MEDIA Speed is 32GFC
      */
     SDI_MEDIA_SPEED_32GFC,
+    /**
+     * SDI MEDIA Speed is 2.5Gbps
+     */
+    SDI_MEDIA_SPEED_2500M,
+    /**
+     * SDI MEDIA Speed is 5G
+     */
+    SDI_MEDIA_SPEED_5G,
 }sdi_media_speed_t;
 
 /**
@@ -1152,6 +1169,7 @@ typedef struct {
     bool tx_control_support_status;
     bool paging_support_status;
     bool software_controlled_power_mode_status;
+    bool ext_mod_ctrl_support_status;
 } sdi_qsfp_supported_feature_t;
 
 /**
@@ -1163,6 +1181,7 @@ typedef struct {
     bool alarm_support_status;
     bool diag_mntr_support_status;
     bool wavelength_tune_support_status;
+    bool ext_mod_ctrl_support_status;
 } sdi_sfp_supported_feature_t;
 
 /**

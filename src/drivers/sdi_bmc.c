@@ -15,7 +15,7 @@
  */
 
 /*
- * filename: sdi_bmc.c
+ * filename: sdi_bmc.c 
  */
 
 #include "sdi_bmc.h"
@@ -30,13 +30,17 @@
 #include "sdi_device_common.h"
 #include "std_time_tools.h"
 #include "std_utils.h"
+#include "std_assert.h"
 
 #include <OpenIPMI/ipmiif.h>
 #include <OpenIPMI/ipmi_smi.h>
 #include <OpenIPMI/ipmi_err.h>
 #include <OpenIPMI/ipmi_posix.h>
 #include <OpenIPMI/ipmi_fru.h>
+#include <OpenIPMI/ipmi_mc.h>
+#include <OpenIPMI/internal/ipmi_domain.h>
 
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/time.h>
 #include <signal.h>
@@ -51,9 +55,10 @@ static int32_t sdi_bmc_entity_presence_handler (ipmi_entity_t *entity, int32_t p
 static sdi_bmc_sensor_t *sdi_bmc_sensor_create (ipmi_entity_t *entity, ipmi_sensor_t *sensor);
 sdi_bmc_sensor_t *sdi_bmc_add_entity_fru_info (ipmi_entity_t *entity);
 
+std_dll_head *oem_poller_head;
 
 /**
- * sdi_bmc_sensor_threshold_event_handler is a callback function which is used to
+ * sdi_bmc_sensor_threshold_event_handler is a callback function which is used to 
  * register for threshold events with openipmi library. It will update current sensor
  * data in local sensor database.
  */
@@ -125,7 +130,7 @@ sdi_bmc_sensor_discrete_event_handler (ipmi_sensor_t *sensor, enum ipmi_event_di
 }
 
 /**
- * sdi_bmc_sensor_discrete_states is a callback function to read and update
+ * sdi_bmc_sensor_discrete_states is a callback function to read and update 
  * discrete states of sensor.
  */
 
@@ -223,6 +228,73 @@ static void sdi_bmc_sensor_update_handler (enum ipmi_update_e op, ipmi_entity_t 
 
 }
 
+static void oem_resp_handler (ipmi_mc_t  *src, ipmi_msg_t *rsp, void *rsp_data)
+{
+    if (src == NULL) {
+        SDI_DEVICE_ERRMSG_LOG(" oem_call_back src is NULL");
+        return;
+    }
+    sdi_bmc_oem_cmd_info_t *oem_cmd = (sdi_bmc_oem_cmd_info_t *)rsp_data;
+    if (rsp->data[0] != 0) {
+        SDI_DEVICE_ERRMSG_LOG("BMC OEM Failed (%d) for netfn %d:%d - %d:%d:%d", rsp->data[0],
+            oem_cmd->netfn, oem_cmd->cmd, oem_cmd->bus_id, oem_cmd->slave_addr, oem_cmd->offset);
+        return;
+    }
+    for (uint32_t i = 0; i < oem_cmd->data_size; i++) {
+        oem_cmd->resp_data[i]  = rsp->data[i+1];
+    }
+    SDI_DEVICE_TRACEMSG_LOG("OEM Resp (%d %d) netfn %d:%d - %d:%d:%d", rsp->data[0], rsp->data[1],
+            oem_cmd->netfn, oem_cmd->cmd, oem_cmd->bus_id, oem_cmd->slave_addr, oem_cmd->offset);
+}
+
+/*
+ * Execute OEM specific IPMI command 
+ */
+t_std_error sdi_bmc_oem_cmd_execute(sdi_bmc_oem_cmd_info_t *oem_cmd, uint8_t *data)
+{
+    ipmi_msg_t msg;
+
+    if (oem_cmd->data_size > SDI_BMC_OEM_DATA_LEN) {
+        return SDI_ERRCODE(EMSGSIZE);
+    }
+    msg.netfn = oem_cmd->netfn;
+    msg.cmd = oem_cmd->cmd;
+    msg.data_len = (oem_cmd->data)? 1 : 4 + (data != NULL)? oem_cmd->data_size : 0;
+    msg.data = oem_cmd->req_data;
+    if (oem_cmd->data == 0) {
+        msg.data[0] = oem_cmd->bus_id;
+        msg.data[1] = oem_cmd->slave_addr;
+        msg.data[2] = oem_cmd->data_size;
+        msg.data[3] = oem_cmd->offset;
+    } else {
+        msg.data[0] = oem_cmd->data;
+    }
+    if (data != NULL) {
+        for(size_t i = 0; i < oem_cmd->data_size; i++) {
+            msg.data[4+i] = data[i];
+        }
+    }
+
+    int        rv;
+    ipmi_system_interface_addr_t si;
+    ipmi_mc_t                    *si_mc;
+
+    si.addr_type = IPMI_SYSTEM_INTERFACE_ADDR_TYPE;
+    si.channel = 0xf;
+    si.lun = 0;
+    si_mc = _ipmi_find_mc_by_addr(domain_id.domain, (ipmi_addr_t *) &si, sizeof(si));
+
+    if (!si_mc) {
+        SDI_DEVICE_ERRMSG_LOG("_ipmi_find_mc_by_addr returned null.");
+        return SDI_ERRCODE(EINVAL);
+    }
+
+    rv = ipmi_mc_send_command(si_mc, 0, &msg, (!data)? oem_resp_handler : NULL, (void *)oem_cmd);
+
+    SDI_DEVICE_TRACEMSG_LOG("ipmi_mc_send_command Return val: %d", rv);
+    return  (rv != 0)? SDI_ERRCODE(EIO) : STD_ERR_OK;
+}
+
 static int sdi_bmc_ipmi_traverse_fru_node_tree (ipmi_fru_node_t *node,
                                                 sdi_bmc_sensor_t *srp, void *cb_data)
 {
@@ -248,17 +320,41 @@ static int sdi_bmc_ipmi_traverse_fru_node_tree (ipmi_fru_node_t *node,
             continue;
         }
 
+        sdi_bmc_dev_resource_info_t *res = sdi_bmc_dev_get_by_data_sdr(cb_data, srp->name);
+        if (res->psu_type_oem_cmd != NULL) {
+            res->psu_type_oem_cmd->resp_data = &srp->res.entity_info.type;
+            if (sdi_bmc_oem_cmd_execute(res->psu_type_oem_cmd, NULL) != STD_ERR_OK) {
+                SDI_DEVICE_ERRMSG_LOG("BMC OEM Command Execution failed");
+            }
+        }
+        if (res->air_flow_oem_cmd != NULL) {
+            res->air_flow_oem_cmd->resp_data = &srp->res.entity_info.air_flow;
+            if (sdi_bmc_oem_cmd_execute(res->air_flow_oem_cmd, NULL) != STD_ERR_OK) {
+                SDI_DEVICE_ERRMSG_LOG("BMC PSU AirFlow Retrival Failed");
+            }
+        }
         if (strcmp("internal_use", name) == 0) {
-            sdi_bmc_dev_resource_info_t *res = sdi_bmc_dev_get_by_data_sdr(cb_data, srp->name);
             uint32_t elm_data = 0;
             if (res != NULL) {
-                if (res->int_use_elm_offset < data_len) {
+                if ((SDI_BMC_INVALID_OFFSET != res->int_use_elm_offset) && (res->int_use_elm_offset < data_len)) {
                     elm_data = data[res->int_use_elm_offset];
-                    if ((elm_data + res->airflow_offset) <= data_len) {
+                    if (elm_data < res->hdr_sz_offset) {
+                        SDI_DEVICE_ERRMSG_LOG("BMC [%d][%d]: elm_data 0x%x invalid for hsize 0x%x\n",
+                                              i, srp->entity_instance, elm_data, res->hdr_sz_offset);
+                    } else {
+                        elm_data -= res->hdr_sz_offset; /* adjust the elm_data based on BMC header removal */
+                    }
+                    if ((SDI_BMC_INVALID_OFFSET != res->airflow_offset) && ((elm_data + res->airflow_offset) <= data_len)) {
                         srp->res.entity_info.air_flow = data[(elm_data + res->airflow_offset)];
                     }
-                    if ((elm_data + res->psu_type_offset) <= data_len) {
+                    if ((SDI_BMC_INVALID_OFFSET != res->psu_type_offset) && ((elm_data + res->psu_type_offset) <= data_len)) {
                         srp->res.entity_info.type = data[(elm_data + res->psu_type_offset)];
+                        if ((srp->res.entity_info.type != BMC_AC_TYPE) && (srp->res.entity_info.type != BMC_DC_TYPE)) {
+                            SDI_DEVICE_ERRMSG_LOG("BMC [%d][%d]: [int_use 0x%x][psu 0x%x] : elm 0x%x h_sz 0x%x ofs 0x%x type 0x%x len %d\n",
+                                                  i, srp->entity_instance, res->int_use_elm_offset, res->psu_type_offset,
+                                                  elm_data, res->hdr_sz_offset, (elm_data + res->psu_type_offset),
+                                                  srp->res.entity_info.type, data_len);
+                        }
                     }
                 }
             }
@@ -295,14 +391,39 @@ static int sdi_bmc_ipmi_traverse_fru_node_tree (ipmi_fru_node_t *node,
                 SDI_DEVICE_TRACEMSG_LOG("BMC FRU part_number: invalid format.");
             }
         }
-	if (data)
-	    ipmi_fru_data_free(data);
+        if (data)
+            ipmi_fru_data_free(data);
     }
-
+    
     ipmi_fru_put_node(node);
 
     return 0;
 }
+
+void sdi_bmc_entity_info_dummy_populate (ipmi_entity_t *entity, sdi_bmc_sensor_t *srp)
+{
+    uint32_t         id, instance;
+
+    id = ipmi_entity_get_entity_id(entity);
+    instance = ipmi_entity_get_entity_instance(entity);
+
+    if (srp != NULL) {
+        srp->res.entity_info.valid = true;
+        safestrncpy(srp->res.entity_info.board_manufacturer, "DELL",
+                sizeof(srp->res.entity_info.board_manufacturer));
+        safestrncpy(srp->res.entity_info.board_product_name, "DELL-PRODUCT",
+                sizeof(srp->res.entity_info.board_product_name));
+        snprintf(srp->res.entity_info.board_serial_number,
+                sizeof(srp->res.entity_info.board_serial_number),
+                "SN-EN-%d-IN-%d", id, instance);
+        snprintf(srp->res.entity_info.board_part_number,
+                sizeof(srp->res.entity_info.board_part_number),
+                "PN-EN-%d-IN-%d", id, instance);
+        srp->res.entity_info.air_flow = 0x0;
+        srp->res.entity_info.type = BMC_AC_TYPE;
+    }
+}
+
 static void sdi_bmc_ipmi_fru_update_handler (enum ipmi_update_e op,
                                              ipmi_entity_t     *entity,
                                              void              *cb_data)
@@ -322,7 +443,6 @@ static void sdi_bmc_ipmi_fru_update_handler (enum ipmi_update_e op,
             SDI_DEVICE_TRACEMSG_LOG("Adding FRU data failed.");
             return;
         }
-
         rv = ipmi_fru_get_root_node(fru, &type, &node);
         if (rv != 0) {
             SDI_DEVICE_TRACEMSG_LOG("ipmi fru get root node failed.");
@@ -333,6 +453,18 @@ static void sdi_bmc_ipmi_fru_update_handler (enum ipmi_update_e op,
     return;
 
 }
+static void  sdi_bmc_populate_sensor_for_poller()
+{
+    sdi_bmc_oem_poller_t *node = NULL;
+    for(node = (sdi_bmc_oem_poller_t *)std_dll_getfirst(oem_poller_head); node != NULL;
+        node = (sdi_bmc_oem_poller_t *)std_dll_getnext(oem_poller_head, (std_dll *)node)) {
+        sdi_bmc_sensor_t *sensor = sdi_bmc_db_sensor_get_by_name(node->sensor);
+        if (sensor == NULL) return;
+        node->sensor_loc = &sensor->res.reading.discrete_state;
+    }
+    return;
+}
+
 /**
  * Entity update handler callback function.
  */
@@ -343,6 +475,7 @@ static void sdi_bmc_entity_update_handler (enum ipmi_update_e op, ipmi_domain_t 
     int32_t          rv;
     uint32_t         id, instance;
     sdi_bmc_entity_t *ent;
+    sdi_bmc_sensor_t *srp = NULL;
 
     id = ipmi_entity_get_entity_id(entity);
     instance = ipmi_entity_get_entity_instance(entity);
@@ -364,14 +497,21 @@ static void sdi_bmc_entity_update_handler (enum ipmi_update_e op, ipmi_domain_t 
         ent->sdi_type = sdi_bmc_sdi_entity_type_get(ent->type);
         if ((ent->type == IPMI_ENTITY_ID_POWER_SUPPLY)
                 || (ent->type == IPMI_ENTITY_ID_FAN_COOLING)) {
-            sdi_bmc_add_entity_fru_info(entity);
-            rv = ipmi_entity_add_fru_update_handler(entity,
-                    sdi_bmc_ipmi_fru_update_handler, cb_data);
-            if (rv != 0) {
-                SDI_DEVICE_ERRMSG_LOG("ipmi_entity_add_fru_update_handler: 0x%x", rv);
+            srp = sdi_bmc_add_entity_fru_info(entity);
+            if ((srp != NULL) && (srp->res.entity_info.is_dummy == true)) {
+                sdi_bmc_entity_info_dummy_populate(entity, srp);
+            } else {
+
+                rv = ipmi_entity_add_fru_update_handler(entity,
+                        sdi_bmc_ipmi_fru_update_handler, cb_data);
+                if (rv != 0) {
+                    SDI_DEVICE_ERRMSG_LOG("ipmi_entity_add_fru_update_handler: 0x%x", rv);
+                }
             }
         }
     }
+    sdi_bmc_populate_sensor_for_poller();
+
 }
 
 /**
@@ -414,7 +554,7 @@ static void sdi_bmc_sensor_reading_handler (ipmi_sensor_t *sensor,
 }
 
 /**
- * Threshold reading callback function. Its will update threshold data of a sensor in
+ * Threshold reading callback function. Its will update threshold data of a sensor in 
  * sensor database.
  */
 static void sdi_bmc_got_thresholds (ipmi_sensor_t *sensor, int err, ipmi_thresholds_t *th, void *cb_data)
@@ -490,7 +630,7 @@ static sdi_bmc_sensor_t *sdi_bmc_sensor_create (ipmi_entity_t *entity, ipmi_sens
                 if (rv != 0) {
                     SDI_DEVICE_ERRMSG_LOG("Error in adding discrete event handler : 0x%x\n", rv);
                 }
-                rv = ipmi_sensor_add_discrete_event_handler(sensor,
+                rv = ipmi_sensor_add_discrete_event_handler(sensor, 
                         sdi_bmc_sensor_discrete_event_handler, NULL);
                 if (rv != 0) {
                     SDI_DEVICE_ERRMSG_LOG("Error in adding discrete event handler : 0x%x\n", rv);
@@ -674,7 +814,7 @@ static void sdi_bmc_iterate_entities (ipmi_domain_t *domain, void *cb_data)
 
 /**
  * sdi_bmc_open_domain_handler is a domain handler callback function,
- * this will get called once the domain is created. Initialize entity update
+ * this will get called once the domain is created. Initialize entity update 
  * handler.
  */
 
@@ -811,6 +951,21 @@ static void sdi_bmc_event_thread (void *param)
     sdi_bmc_thread_param_t *tparam = (sdi_bmc_thread_param_t *) param;
     tparam->os_hnd->operation_loop(tparam->os_hnd);
 }
+
+
+static void sdi_bmc_oem_poller(void)
+{
+    sdi_bmc_oem_poller_t *node = NULL;
+    for(node = (sdi_bmc_oem_poller_t *)std_dll_getfirst(oem_poller_head); node != NULL;
+        node = (sdi_bmc_oem_poller_t *)std_dll_getnext(oem_poller_head, (std_dll *)node)) {
+        if (((*(node->sensor_loc)) & node->sensor_bit)  == node->sensor_bit) {
+            for (size_t i = 0; i < node->oem_cmd_count; i++) {
+                sdi_bmc_oem_cmd_execute(&(node->oem_cmd[i]), NULL);
+            }
+        }
+    }
+}
+
 /**
  * BMC poller thread init function. iterate, read and update sensor data
  * based on configured polling interval.
@@ -824,6 +979,7 @@ static void sdi_bmc_poller_thread (void *param)
     while (true) {
         std_usleep(MILLI_TO_MICRO((bmc_dev->polling_interval * 1000)));
         ipmi_domain_pointer_cb(domain_id, sdi_bmc_iterate_entities, dev_hdl);
+        sdi_bmc_oem_poller();
     }
     return;
 }
@@ -845,6 +1001,8 @@ t_std_error sdi_bmc_device_driver_init (sdi_device_hdl_t dev_hdl)
         SDI_DEVICE_ERRMSG_LOG("Error in creating BMC event handling thread.");
         return SDI_ERRCODE(EPERM);
     }
+    sdi_bmc_dev_t *bmc_dev = (sdi_bmc_dev_t *)dev_hdl->private_data;
+    oem_poller_head = bmc_dev->oem_poller_head; 
 
     return STD_ERR_OK;
 }

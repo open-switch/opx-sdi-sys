@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -115,6 +115,8 @@ void sdi_db_reinit_database(void);
 #define TABLE_NVRAM             "NVRAM"
 /** Writable External Control */
 #define TABLE_EXT_CTRL          "External_Ctrl"
+/** Comm Dev */
+#define TABLE_COMMDEV           "CommDev"
 
 /**
  * @}
@@ -169,6 +171,21 @@ void sdi_db_reinit_database(void);
 #define DIGIT_LED_DISPLAY       "Display_String"
 /** Digit display LED State */
 #define DIGIT_LED_STATE         "Display_On"
+
+/**
+ * @}
+ */
+
+/** @defgroup sdi_table_thermal SDI VM DB CommDev  table fields
+ *
+ * @ingroup sdi_table
+ * @{
+ */
+
+/** CommDev State */
+#define COMMDEV_SERVICE_TAG             "Service_Tag"
+#define COMMDEV_FW_VER                  "Firmware_Version"
+#define COMMDEV_SLOT_ID                 "Slot_Occupation"
 
 /**
  * @}

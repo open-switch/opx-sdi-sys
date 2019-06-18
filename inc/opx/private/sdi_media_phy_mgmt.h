@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -116,5 +116,42 @@ t_std_error sdi_qsfp_4X1_1000baseT_speed_set (sdi_device_hdl_t qsfp_device,
 t_std_error sdi_qsfp_4X1_1000baseT_autoneg_set (sdi_device_hdl_t qsfp_device,
                                                 uint_t channel, bool enable);
 
+
+/**
+ * @brief Api to  set speed  on media PHY.
+ * @param[in] resource_hdl - handle to media
+ * @param[in] speed - speed of the interface. Should be of type @ref sdi_media_speed_t .
+ * @return - standard @ref t_std_error
+ *
+ */
+
+t_std_error sdi_cusfp_plus_phy_speed_set(sdi_device_hdl_t sfp_device, sdi_media_speed_t speed);
+
+/**
+ * @brief Api to get link status from media PHY.
+ * @param[in] resource_hdl - handle to media
+ * @param[in] status - true when link is up, false when link is down
+ * @return - standard @ref t_std_error
+ *
+ */
+t_std_error sdi_cusfp_plus_phy_link_status_get (sdi_device_hdl_t sfp_device, bool *status);
+
+/**
+ * @brief Api to enable/disable the Fiber/Serdes TX and RX on media PHY.
+ * @param[in] resource_hdl - handle to media
+ * @param[in] enable - true enable Serdes, false - Disable Serdes.
+ * @return - standard @ref t_std_error
+ *
+ */
+t_std_error sdi_cusfp_plus_phy_serdes_control (sdi_device_hdl_t sfp_device, bool enable);
+
+/**
+ * @brief Api to get line side speed on media PHY.
+ * @param[in] resource_hdl - handle to media
+ * @param[out] speed - speed of line side
+ * @return - standard @ref t_std_error
+ *
+ */
+t_std_error sdi_cusfp_plus_phy_speed_get(sdi_device_hdl_t sfp_device, sdi_media_speed_t* speed);
 #endif
 

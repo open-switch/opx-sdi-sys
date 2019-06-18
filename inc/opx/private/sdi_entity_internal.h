@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Dell Inc.
+ * Copyright (c) 2019 Dell Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -52,6 +52,7 @@ typedef enum {
     SDI_ENT_ACCESS_BMC,    /** Via BMC */
 } sdi_entity_access_type_t;
 
+
 /**
  * @struct sdi_entity_t
  * entity data structure which contains details of an entity
@@ -71,6 +72,7 @@ struct sdi_entity {
     sdi_pin_bus_hdl_t power_output_status_pin_hdl; /**<psu power output
                                                     * status handler */
     char pres_attr[SDI_MAX_NAME_LEN]; /** presence attr configured in entity.xml */
+    uint_t pres_bit; /** Presence bit number in the specified status register. */
     sdi_pin_bus_hdl_t pres_pin_hdl; /**<presence handler */
     sdi_pin_bus_hdl_t fault_status_pin_hdl; /**<fault status handler */
     sdi_pin_bus_hdl_t power_pin_hdl; /**<power ON/OFF handler */
